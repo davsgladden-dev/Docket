@@ -1,33 +1,32 @@
-// renderer/ticket.js
-// Runs inside each ticket window's renderer process.
+// ═══════════════════════════════════════════════════════════
+// THERMAL TODO — TICKET RENDERER
+// ═══════════════════════════════════════════════════════════
 
 let ticketData = null;
 
-// ── Receive Data from Main Process ───────────────────────────────
+// ── Receive data from main process ───────────────────────
 window.ticketAPI.onTicketData((data) => {
     ticketData = data;
     renderTicket();
 });
 
-// ── Render Ticket ────────────────────────────────────────────────
+// ── Render ───────────────────────────────────────────────
 function renderTicket() {
-    const ticket = document.getElementById('ticket');
+    const ticket  = document.getElementById('ticket');
+    const tornEdge = document.getElementById('torn-edge');
 
-    // Set the ticket color as a CSS variable
+    // Set color on both ticket body AND torn edge
     ticket.style.setProperty('--ticket-color', ticketData.color);
     ticket.style.backgroundColor = ticketData.color;
+    tornEdge.style.backgroundColor = ticketData.color;
 
     // Title
     const titleEl = document.getElementById('ticket-title');
-    if (ticketData.title) {
-        titleEl.textContent = ticketData.title;
-    } else {
-        titleEl.textContent = '';
-    }
+    titleEl.textContent = ticketData.title || '';
 
     // Items
-    const itemsContainer = document.getElementById('ticket-items');
-    itemsContainer.innerHTML = '';
+    const itemsEl = document.getElementById('ticket-items');
+    itemsEl.innerHTML = '';
 
     ticketData.items.forEach((item, index) => {
         const row = document.createElement('div');
@@ -41,13 +40,9 @@ function renderTicket() {
         text.className = 'ticket-item-text';
         text.textContent = item.text;
 
-        row.appendChild(checkbox);
-        row.appendChild(text);
-
-        // Click to toggle done
+        row.append(checkbox, text);
         row.addEventListener('click', () => toggleItem(index));
-
-        itemsContainer.appendChild(row);
+        itemsEl.appendChild(row);
     });
 
     // Timestamp
@@ -55,48 +50,45 @@ function renderTicket() {
     const date = new Date(ticketData.createdAt);
     tsEl.textContent = formatTimestamp(date);
 
-    // Request proper window sizing after render
+    // Request proper window size from main process
     requestAnimationFrame(() => {
         const rect = ticket.getBoundingClientRect();
-        // Add some padding for the transparent edges
-        window.ticketAPI.resize(ticketData.id, rect.width + 8, rect.height + 8);
+        // +14 top for torn edge, +8 bottom for shadow/padding
+        window.ticketAPI.resize(
+            ticketData.id,
+            Math.ceil(rect.width) + 8,
+            Math.ceil(rect.height) + 22
+        );
     });
 }
 
-// ── Toggle Item ──────────────────────────────────────────────────
+// ── Toggle Item ──────────────────────────────────────────
 function toggleItem(index) {
     ticketData.items[index].done = !ticketData.items[index].done;
-
-    // Re-render
     renderTicket();
-
-    // Persist to main process
     window.ticketAPI.updateItems(ticketData.id, ticketData.items);
 
-    // Check if ALL items are done → confetti! (we'll add this later)
-    const allDone = ticketData.items.every(item => item.done);
-    if (allDone) {
-        console.log('🎉 All done! Confetti goes here.');
-        // TODO: confetti burst
+    // Check if ALL done
+    if (ticketData.items.every(item => item.done)) {
+        console.log('🎉 All done! Confetti coming in a future phase.');
     }
 }
 
-// ── Format Timestamp ─────────────────────────────────────────────
+// ── Timestamp Formatter ──────────────────────────────────
 function formatTimestamp(date) {
-    const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-    const month = months[date.getMonth()];
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const mins = String(date.getMinutes()).padStart(2, '0');
-    return `${month} ${day}, ${year}  ${hours}:${mins}`;
+    const months = ['JAN','FEB','MAR','APR','MAY','JUN',
+        'JUL','AUG','SEP','OCT','NOV','DEC'];
+    const M = months[date.getMonth()];
+    const D = String(date.getDate()).padStart(2, '0');
+    const Y = date.getFullYear();
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${M} ${D}, ${Y}  ${h}:${m}`;
 }
 
-// ── Close / Discard ──────────────────────────────────────────────
+// ── Discard ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('close-btn').addEventListener('click', () => {
-        if (ticketData) {
-            window.ticketAPI.discard(ticketData.id);
-        }
+        if (ticketData) window.ticketAPI.discard(ticketData.id);
     });
 });

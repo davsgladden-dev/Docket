@@ -23,22 +23,21 @@ const ticketWindows = new Map(); // id → BrowserWindow
 // ── Printer Window ─────────────────────────────────────────────────
 function createPrinterWindow() {
     printerWindow = new BrowserWindow({
-        width: 380,
-        height: 660,
+        width: 400,          // was 380
+        height: 740,         // was 660
         resizable: false,
-        frame: false,           // We'll build our own title bar
+        frame: false,
         transparent: false,
-        backgroundColor: '#2b2b2b',
+        backgroundColor: '#1a1a1e',   // darker to match new design
         webPreferences: {
             preload: path.join(__dirname, 'preload-printer.js'),
-            contextIsolation: true,   // Security: renderer can't access Node
-            nodeIntegration: false    // Security: no require() in renderer
+            contextIsolation: true,
+            nodeIntegration: false
         }
     });
 
     printerWindow.loadFile(path.join(__dirname, 'renderer', 'printer.html'));
 
-    // Open DevTools in development (run with: npm run dev)
     if (process.argv.includes('--dev')) {
         printerWindow.webContents.openDevTools({ mode: 'detach' });
     }
