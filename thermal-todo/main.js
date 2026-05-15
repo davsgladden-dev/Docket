@@ -1,39 +1,35 @@
-// main.js — Electron Main Process
-// This runs in Node.js, NOT in the browser. It creates and manages windows.
-
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 
-// ── Persistence Setup ──────────────────────────────────────────────
-// electron-store saves JSON to the user's app data folder automatically.
-// We'll store ticket data and window positions here.
+// ── Persistence ──────────────────────────────────────────
 const store = new Store({
     name: 'thermal-todo-data',
-    defaults: {
-        tickets: []
-        // Each ticket: { id, title, items: [{text, done}], color, x, y, width, height, createdAt }
-    }
+    defaults: { tickets: [] },
+    clearInvalidConfig: true,
 });
 
-// ── Window References ──────────────────────────────────────────────
+// ── Window References ────────────────────────────────────
 let printerWindow = null;
-const ticketWindows = new Map(); // id → BrowserWindow
+const ticketWindows = new Map();
 
-// ── Printer Window ─────────────────────────────────────────────────
+const ICON_PATH = path.join(__dirname, 'assets', 'icon.png');
+
+// ── Printer Window ───────────────────────────────────────
 function createPrinterWindow() {
     printerWindow = new BrowserWindow({
-        width: 400,          // was 380
-        height: 740,         // was 660
+        width: 400,
+        height: 740,
         resizable: false,
         frame: false,
         transparent: false,
-        backgroundColor: '#1a1a1e',   // darker to match new design
+        backgroundColor: '#1a1a1e',
+        icon: ICON_PATH,
         webPreferences: {
             preload: path.join(__dirname, 'preload-printer.js'),
             contextIsolation: true,
-            nodeIntegration: false
-        }
+            nodeIntegration: false,
+        },
     });
 
     printerWindow.loadFile(path.join(__dirname, 'renderer', 'printer.html'));
@@ -44,145 +40,127 @@ function createPrinterWindow() {
 
     printerWindow.on('closed', () => {
         printerWindow = null;
+        // On Windows/Linux, quit app when printer closes
+        if (process.platform !== 'darwin') {
+            app.quit();
+        }
     });
 }
 
-// ── Ticket Window ──────────────────────────────────────────────────
+// ── Ticket Window ────────────────────────────────────────
 function createTicketWindow(ticketData) {
-    // Calculate a good size based on content
     const itemCount = ticketData.items.length;
     const hasTitle = ticketData.title && ticketData.title.trim().length > 0;
-    const baseHeight = 60;                     // padding + date stamp
+    const baseHeight = 60;
     const titleHeight = hasTitle ? 44 : 0;
     const itemHeight = itemCount * 36;
-    const totalHeight = baseHeight + titleHeight + itemHeight + 40; // extra breathing room
-
+    const totalHeight = baseHeight + titleHeight + itemHeight + 40;
     const ticketWidth = 300;
 
-    // Default position: near the printer window, offset by ticket count
-    const displays = screen.getPrimaryDisplay();
-    const { width: screenW, height: screenH } = displays.workAreaSize;
+    // Screen bounds
+    const { workAreaSize } = screen.getPrimaryDisplay();
+    const { width: screenW, height: screenH } = workAreaSize;
     const existingCount = ticketWindows.size;
-    const defaultX = Math.min(420 + (existingCount * 30), screenW - ticketWidth);
-    const defaultY = Math.min(100 + (existingCount * 30), screenH - totalHeight);
 
-    // Use saved position if we're restoring from persistence
-    const x = ticketData.x ?? defaultX;
-    const y = ticketData.y ?? defaultY;
+    // Default position: staggered cascade, clamped to screen
+    const defaultX = Math.max(0, Math.min(
+        420 + existingCount * 30, screenW - ticketWidth - 10
+    ));
+    const defaultY = Math.max(0, Math.min(
+        100 + existingCount * 30, screenH - totalHeight - 10
+    ));
+
+    // Use saved position if available, clamped to screen
+    const x = Math.max(0, Math.min(ticketData.x ?? defaultX, screenW - ticketWidth));
+    const y = Math.max(0, Math.min(ticketData.y ?? defaultY, screenH - 60));
 
     const win = new BrowserWindow({
         width: ticketWidth,
         height: Math.max(totalHeight, 120),
-        x: x,
-        y: y,
-        frame: false,              // No OS title bar
-        transparent: true,         // Lets us see the torn paper edges
-        alwaysOnTop: true,         // Sticky note behavior
-        skipTaskbar: true,         // Don't clutter the taskbar
+        x, y,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        skipTaskbar: true,
         hasShadow: true,
         resizable: false,
+        icon: ICON_PATH,
         webPreferences: {
             preload: path.join(__dirname, 'preload-ticket.js'),
             contextIsolation: true,
-            nodeIntegration: false
-        }
+            nodeIntegration: false,
+        },
     });
 
     win.loadFile(path.join(__dirname, 'renderer', 'ticket.html'));
 
-    // Once the page is ready, send the ticket data to it
     win.webContents.once('did-finish-load', () => {
         win.webContents.send('ticket:data', ticketData);
     });
 
-    // Track this window
     ticketWindows.set(ticketData.id, win);
 
-    // Save position whenever the window moves
     win.on('moved', () => {
+        if (win.isDestroyed()) return;
         const [wx, wy] = win.getPosition();
         updateTicketInStore(ticketData.id, { x: wx, y: wy });
     });
 
-    // Clean up reference on close
     win.on('closed', () => {
         ticketWindows.delete(ticketData.id);
     });
 
-    if (process.argv.includes('--dev')) {
-        // win.webContents.openDevTools({ mode: 'detach' });
-    }
-
     return win;
 }
 
-// ── Store Helpers ──────────────────────────────────────────────────
-function saveTicketToStore(ticketData) {
+// ── Store Helpers ────────────────────────────────────────
+function saveTicketToStore(data) {
     const tickets = store.get('tickets');
-    tickets.push(ticketData);
+    tickets.push(data);
     store.set('tickets', tickets);
 }
 
 function updateTicketInStore(id, updates) {
     const tickets = store.get('tickets');
-    const index = tickets.findIndex(t => t.id === id);
-    if (index !== -1) {
-        tickets[index] = { ...tickets[index], ...updates };
+    const idx = tickets.findIndex(t => t.id === id);
+    if (idx !== -1) {
+        tickets[idx] = { ...tickets[idx], ...updates };
         store.set('tickets', tickets);
     }
 }
 
 function removeTicketFromStore(id) {
-    const tickets = store.get('tickets').filter(t => t.id !== id);
-    store.set('tickets', tickets);
+    store.set('tickets', store.get('tickets').filter(t => t.id !== id));
 }
 
-// ── IPC Handlers ───────────────────────────────────────────────────
-// These are the "phone lines" between the renderer processes and main.
-
-// Printer says "print this ticket!"
-ipcMain.handle('printer:print-ticket', async (event, ticketData) => {
-    // Generate a unique ID
+// ── IPC Handlers ─────────────────────────────────────────
+ipcMain.handle('printer:print-ticket', async (_event, ticketData) => {
     ticketData.id = `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     ticketData.createdAt = new Date().toISOString();
-
-    // Save to persistent storage
     saveTicketToStore(ticketData);
-
-    // Create the ticket window
     createTicketWindow(ticketData);
-
     return ticketData.id;
 });
 
-// Ticket says "I've been updated" (item checked/unchecked)
-ipcMain.on('ticket:update-items', (event, { id, items }) => {
+ipcMain.on('ticket:update-items', (_event, { id, items }) => {
     updateTicketInStore(id, { items });
 });
 
-// Ticket says "discard me"
-ipcMain.on('ticket:discard', (event, { id }) => {
+ipcMain.on('ticket:discard', (_event, { id }) => {
     removeTicketFromStore(id);
     const win = ticketWindows.get(id);
-    if (win && !win.isDestroyed()) {
-        win.close();
-    }
+    if (win && !win.isDestroyed()) win.close();
 });
 
-// Printer asks "what tickets exist?" (for restoring on startup)
-ipcMain.handle('printer:get-tickets', async () => {
-    return store.get('tickets');
-});
+ipcMain.handle('printer:get-tickets', async () => store.get('tickets'));
 
-// Ticket requests a window resize (after content renders)
-ipcMain.on('ticket:resize', (event, { id, width, height }) => {
+ipcMain.on('ticket:resize', (_event, { id, width, height }) => {
     const win = ticketWindows.get(id);
     if (win && !win.isDestroyed()) {
         win.setSize(Math.round(width), Math.round(height));
     }
 });
 
-// ── Window Control IPC ─────────────────────────────────────────
 ipcMain.on('window:minimize', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.minimize();
@@ -193,27 +171,26 @@ ipcMain.on('window:close', (event) => {
     if (win) win.close();
 });
 
-// ── App Lifecycle ──────────────────────────────────────────────────
-app.whenReady().then(async () => {
+// ── App Lifecycle ────────────────────────────────────────
+app.whenReady().then(() => {
     createPrinterWindow();
 
-    // Restore any saved tickets from last session
-    const savedTickets = store.get('tickets');
+    const savedTickets = store.get('tickets') || [];
     for (const ticket of savedTickets) {
-        createTicketWindow(ticket);
+        try {
+            createTicketWindow(ticket);
+        } catch (err) {
+            console.error('Failed to restore ticket:', ticket.id, err);
+        }
     }
 });
 
-// macOS: re-create window when dock icon is clicked
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createPrinterWindow();
     }
 });
 
-// Quit when all windows are closed (except on macOS)
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    if (process.platform !== 'darwin') app.quit();
 });

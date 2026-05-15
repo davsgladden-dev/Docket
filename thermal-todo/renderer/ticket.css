@@ -1,10 +1,8 @@
 /* ═══════════════════════════════════════════════════════════
-   THERMAL TODO — TICKET (sticky note window)
+   THERMAL TODO — TICKET (Final Polish)
    ═══════════════════════════════════════════════════════════ */
 
-*, *::before, *::after {
-    margin: 0; padding: 0; box-sizing: border-box;
-}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     background: transparent;
@@ -13,58 +11,65 @@ body {
     user-select: none;
 }
 
-/* ── Ticket ───────────────────────────────────────────────
-   margin-top creates space for the torn edge above.      */
+/* ── Ticket Body ──────────────────────────────────────── */
 .ticket {
     background: var(--ticket-color, #F5F2EE);
-    border-radius: 0 0 5px 5px;  /* only bottom corners rounded */
+    border-radius: 0 0 5px 5px;
     padding: 18px 18px 14px;
     position: relative;
     min-height: 80px;
-    margin-top: 14px;
+    margin-top: 12px;
     box-shadow:
-            0 3px 10px rgba(0, 0, 0, 0.18),
-            0 1px 3px rgba(0, 0, 0, 0.12);
+            0 3px 10px rgba(0,0,0,0.18),
+            0 1px 3px rgba(0,0,0,0.12);
 }
 
 /* Paper texture */
 .ticket::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    opacity: 0.04;
+    content: ''; position: absolute; inset: 0;
+    border-radius: inherit; opacity: 0.04;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
+    pointer-events: none; z-index: 0;
 }
 
 .ticket > * { position: relative; z-index: 1; }
 
 /* ── Torn Top Edge ────────────────────────────────────────
-   A jagged strip that sits above the ticket body,
-   creating the illusion of paper torn from the printer.  */
+   Interlocks with receipt TORN_BOTTOM in printer.js.
+   Each Y value = 12 - (receipt depth at same X position).
+   12px max depth ensures the two halves fit perfectly.   */
 .ticket-torn-edge {
     position: absolute;
-    top: -13px;
+    top: -11px;
     left: 0;
     right: 0;
-    height: 16px;
+    height: 12px;
     background: var(--ticket-color, #F5F2EE);
     z-index: 2;
     clip-path: polygon(
-            0% 100%,
-            2% 58%,  4% 82%,  6% 35%,  8% 68%, 10% 50%,
-            12% 85%, 14% 38%, 16% 72%, 18% 28%, 20% 62%,
-            22% 80%, 24% 42%, 26% 68%, 28% 30%, 30% 75%,
-            32% 52%, 34% 88%, 36% 40%, 38% 65%, 40% 32%,
-            42% 78%, 44% 48%, 46% 72%, 48% 35%, 50% 60%,
-            52% 85%, 54% 42%, 56% 70%, 58% 30%, 60% 55%,
-            62% 82%, 64% 38%, 66% 65%, 68% 48%, 70% 78%,
-            72% 32%, 74% 62%, 76% 85%, 78% 45%, 80% 70%,
-            82% 28%, 84% 58%, 86% 80%, 88% 40%, 90% 68%,
-            92% 50%, 94% 82%, 96% 35%, 98% 62%,
-            100% 100%
+            0% 5px,
+            5% 9px,
+            10% 3px,
+            15% 7px,
+            20% 1px,
+            25% 10px,
+            30% 4px,
+            35% 8px,
+            40% 2px,
+            45% 6px,
+            50% 9px,
+            55% 1px,
+            60% 10px,
+            65% 5px,
+            70% 3px,
+            75% 8px,
+            80% 2px,
+            85% 7px,
+            90% 4px,
+            95% 9px,
+            100% 5px,
+            100% 100%,
+            0% 100%
     );
 }
 
@@ -72,10 +77,9 @@ body {
 .ticket-drag-handle {
     -webkit-app-region: drag;
     position: absolute;
-    top: -14px;      /* covers the torn edge too */
-    left: 0;
-    right: 0;
-    height: 44px;    /* torn edge + top portion of ticket */
+    top: -12px;
+    left: 0; right: 0;
+    height: 42px;
     cursor: grab;
     z-index: 3;
 }
@@ -84,23 +88,14 @@ body {
 .ticket-close-btn {
     -webkit-app-region: no-drag;
     position: absolute;
-    top: 3px;
-    right: 4px;
-    width: 22px;
-    height: 22px;
-    border: none;
-    background: transparent;
-    color: rgba(0,0,0,0.15);
-    font-size: 12px;
-    cursor: pointer;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    z-index: 10;
+    top: 3px; right: 4px;
+    width: 22px; height: 22px;
+    border: none; background: transparent;
+    color: rgba(0,0,0,0.15); font-size: 12px;
+    cursor: pointer; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; z-index: 10;
 }
-
 .ticket-close-btn:hover {
     background: rgba(0,0,0,0.08);
     color: rgba(0,0,0,0.5);
@@ -108,19 +103,15 @@ body {
 
 /* ── Content ──────────────────────────────────────────── */
 .ticket-content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: flex; flex-direction: column; gap: 8px;
 }
 
 .ticket-title {
-    font-size: 15px;
-    font-weight: bold;
-    color: #333;
-    text-align: center;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding-top: 4px;
+    font-size: 15px; font-weight: bold; color: #333;
+    text-align: center; text-transform: uppercase;
+    letter-spacing: 1px; padding-top: 4px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 .ticket-title:empty { display: none; }
 
@@ -131,40 +122,25 @@ body {
 
 /* ── Items ────────────────────────────────────────────── */
 .ticket-items {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+    display: flex; flex-direction: column; gap: 3px;
 }
 
 .ticket-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 2px;
-    cursor: pointer;
-    border-radius: 3px;
-    transition: background 0.15s;
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 2px; cursor: pointer;
+    border-radius: 3px; transition: background 0.15s;
     -webkit-app-region: no-drag;
 }
-
-.ticket-item:hover {
-    background: rgba(0,0,0,0.03);
-}
+.ticket-item:hover { background: rgba(0,0,0,0.03); }
 
 .ticket-checkbox {
-    width: 15px;
-    height: 15px;
+    width: 15px; height: 15px;
     border: 1.5px solid rgba(0,0,0,0.28);
-    border-radius: 3px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    color: transparent;
+    border-radius: 3px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: transparent;
     transition: all 0.25s;
 }
-
 .ticket-item.done .ticket-checkbox {
     background: rgba(0,0,0,0.12);
     border-color: rgba(0,0,0,0.12);
@@ -172,11 +148,12 @@ body {
 }
 
 .ticket-item-text {
-    font-size: 14px;
-    color: #444;
+    font-size: 14px; color: #444;
     transition: all 0.3s;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
 }
-
 .ticket-item.done .ticket-item-text {
     text-decoration: line-through;
     color: rgba(0,0,0,0.25);
@@ -184,9 +161,7 @@ body {
 
 /* ── Timestamp ────────────────────────────────────────── */
 .ticket-timestamp {
-    font-size: 10px;
-    color: rgba(0,0,0,0.2);
-    text-align: center;
-    letter-spacing: 0.5px;
+    font-size: 10px; color: rgba(0,0,0,0.2);
+    text-align: center; letter-spacing: 0.5px;
     padding-top: 2px;
 }

@@ -9,9 +9,8 @@
     <link rel="stylesheet" href="printer.css">
 </head>
 <body>
-<div class="printer">
+<div class="printer" id="printer">
 
-    <!-- ── Header / Title Bar ─────────────────────────────── -->
     <header class="printer-header">
         <div class="drag-region"></div>
         <div class="header-brand">
@@ -28,18 +27,28 @@
         </div>
     </header>
 
-    <!-- ── Output Tray (receipt feeds up into here) ───────── -->
+    <!-- Output Tray -->
     <div class="output-tray" id="output-tray">
         <div class="tray-label">OUTPUT</div>
         <div class="receipt-preview" id="receipt-preview"></div>
+        <div class="tray-shadow"></div>
     </div>
 
-    <!-- ── Paper Slot ─────────────────────────────────────── -->
+    <!-- Paper Slot with color peek -->
     <div class="paper-slot">
         <div class="slot-teeth"></div>
+        <div class="paper-peek" id="paper-peek"></div>
     </div>
 
-    <!-- ── Control Panel ──────────────────────────────────── -->
+    <!-- Status Display -->
+    <div class="status-bar">
+        <div class="status-display" id="status-display">
+            <span class="status-dot" id="status-dot"></span>
+            <span class="status-text" id="status-text">READY</span>
+        </div>
+    </div>
+
+    <!-- Control Panel -->
     <div class="control-panel" id="control-panel">
 
         <div class="section">
@@ -63,14 +72,15 @@
 
     </div>
 
-    <!-- ── Print Button ───────────────────────────────────── -->
+    <!-- Print Button -->
     <div class="print-area">
         <button id="print-btn" class="print-btn">
             <span class="print-label">PRINT</span>
         </button>
+        <div class="shortcut-hint">Ctrl+Enter</div>
     </div>
 
-    <!-- ── Footer ─────────────────────────────────────────── -->
+    <!-- Footer -->
     <footer class="printer-footer">
         <div class="led-group">
             <div class="led" id="led"></div>
