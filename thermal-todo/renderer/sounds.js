@@ -258,6 +258,63 @@ class SoundEngine {
         shimSrc.start(now);
         shimSrc.stop(now + shimDur);
     }
+
+    // ── PAPER CRUMPLE ───────────────────────────────────────
+    // Multiple crinkle bursts layered with crackling texture
+    playCrumple() {
+        const ctx = this._ensureContext();
+        const now = ctx.currentTime;
+        const dur = 0.5;
+
+        const len = Math.floor(ctx.sampleRate * dur);
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+
+        for (let i = 0; i < len; i++) {
+            const t = i / ctx.sampleRate;
+
+            // Overall fade envelope
+            const fade = Math.exp(-t * 3.5);
+
+            // Individual crinkle bursts at staggered times
+            const c1 = Math.exp(-((t - 0.03) ** 2) / 0.001);
+            const c2 = Math.exp(-((t - 0.08) ** 2) / 0.0015);
+            const c3 = Math.exp(-((t - 0.14) ** 2) / 0.002);
+            const c4 = Math.exp(-((t - 0.19) ** 2) / 0.001);
+            const c5 = Math.exp(-((t - 0.25) ** 2) / 0.0018);
+            const c6 = Math.exp(-((t - 0.30) ** 2) / 0.001);
+            const c7 = Math.exp(-((t - 0.35) ** 2) / 0.0012);
+            const bursts = c1 + c2 + c3 + c4 + c5 + c6 + c7;
+
+            const env = fade * 0.25 + bursts * 0.75;
+
+            // Crackling modulation (random amplitude variation)
+            const crackle = Math.random() > 0.4 ? 1.3 : 0.6;
+            data[i] = (Math.random() * 2 - 1) * env * crackle * 0.45;
+        }
+
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 3500;
+        bp.Q.value = 0.7;
+
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 7000;
+
+        const gain = ctx.createGain();
+        gain.gain.value = 0.3;
+
+        src.connect(bp);
+        bp.connect(lp);
+        lp.connect(gain);
+        gain.connect(ctx.destination);
+        src.start(now);
+        src.stop(now + dur);
+    }
 }
 
 // Single global instance
