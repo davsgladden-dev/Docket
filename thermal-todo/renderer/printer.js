@@ -213,6 +213,8 @@ async function handlePrint() {
 // ── Print Animation (GSAP Timeline) ─────────────────────
 function playPrintAnimation() {
     return new Promise(resolve => {
+        sounds.playPrint(2.1);
+
         const receipt  = document.getElementById('receipt-preview');
         const printer  = document.querySelector('.printer');
         const led      = document.getElementById('led');
@@ -347,6 +349,8 @@ async function completeTear() {
     const tray    = document.getElementById('output-tray');
 
     receipt.classList.remove('tearable');
+
+    sounds.playTear();
 
     // Let the receipt escape the tray bounds
     tray.style.overflow = 'visible';
