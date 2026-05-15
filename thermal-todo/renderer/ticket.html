@@ -12,29 +12,24 @@
 
 <div class="ticket" id="ticket">
 
-    <!-- Drag handle area -->
+    <!-- Torn top edge (jagged paper tear) -->
+    <div class="ticket-torn-edge" id="torn-edge"></div>
+
+    <!-- Drag handle (invisible, covers top area) -->
     <div class="ticket-drag-handle"></div>
 
-    <!-- Close / Discard button -->
+    <!-- Close button -->
     <button class="ticket-close-btn" id="close-btn" title="Discard ticket">✕</button>
 
-    <!-- Ticket content (populated by JS) -->
+    <!-- Content -->
     <div class="ticket-content" id="ticket-content">
-        <!-- Title (if any) -->
         <div class="ticket-title" id="ticket-title"></div>
-
-        <!-- Dashed separator -->
         <div class="ticket-separator"></div>
-
-        <!-- To-do items -->
         <div class="ticket-items" id="ticket-items"></div>
-
-        <!-- Dashed separator -->
         <div class="ticket-separator"></div>
-
-        <!-- Date/time stamp -->
         <div class="ticket-timestamp" id="ticket-timestamp"></div>
     </div>
+
 </div>
 
 <script src="ticket.js"></script>
