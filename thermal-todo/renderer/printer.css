@@ -1,0 +1,273 @@
+/* ── Reset & Base ─────────────────────────────────────────────── */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', 'Courier', monospace;
+    background: #2b2b2b;
+    color: #e0e0e0;
+    overflow: hidden;
+    user-select: none;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Custom Title Bar ─────────────────────────────────────────── */
+.title-bar {
+    -webkit-app-region: drag;     /* Makes it draggable! */
+    background: #1e1e1e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.title-bar-text {
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.title-bar-controls {
+    -webkit-app-region: no-drag;  /* Buttons must be clickable */
+    display: flex;
+    gap: 6px;
+}
+
+.title-btn {
+    background: #3a3a3a;
+    border: none;
+    color: #aaa;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.title-btn:hover {
+    background: #4a4a4a;
+    color: #fff;
+}
+
+.title-btn-close:hover {
+    background: #e74c3c;
+    color: #fff;
+}
+
+/* ── Printer Body ─────────────────────────────────────────────── */
+.printer-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+/* ── Sections ─────────────────────────────────────────────────── */
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #888;
+    font-weight: bold;
+}
+
+.optional {
+    color: #555;
+    font-weight: normal;
+}
+
+/* ── Color Selector ───────────────────────────────────────────── */
+.color-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    position: relative;
+}
+
+.color-swatch:hover {
+    transform: scale(1.15);
+}
+
+.color-swatch.selected {
+    border-color: #fff;
+    transform: scale(1.15);
+}
+
+.color-swatch.selected::after {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #333;
+    font-weight: bold;
+}
+
+/* ── Inputs ───────────────────────────────────────────────────── */
+.thermal-input {
+    background: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    padding: 10px 12px;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+}
+
+.thermal-input:focus {
+    border-color: #888;
+}
+
+.thermal-input::placeholder {
+    color: #666;
+}
+
+/* ── Item Rows ────────────────────────────────────────────────── */
+#items-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.item-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.item-input {
+    flex: 1;
+}
+
+.remove-item-btn {
+    background: none;
+    border: 1px solid #4a4a4a;
+    color: #666;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+
+.remove-item-btn:hover {
+    border-color: #e74c3c;
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.add-item-btn {
+    background: none;
+    border: 1px dashed #4a4a4a;
+    color: #888;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.add-item-btn:hover {
+    border-color: #888;
+    color: #ccc;
+    background: rgba(255,255,255,0.03);
+}
+
+/* ── Paper Slot ───────────────────────────────────────────────── */
+.paper-slot {
+    height: 12px;
+    background: #1a1a1a;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    margin: 4px 0;
+}
+
+.slot-shadow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.4) 100%);
+}
+
+/* ── Print Button ─────────────────────────────────────────────── */
+.print-btn {
+    background: #4a4a4a;
+    border: none;
+    color: #e0e0e0;
+    padding: 14px;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: auto;
+}
+
+.print-btn:hover {
+    background: #5a5a5a;
+    transform: translateY(-1px);
+}
+
+.print-btn:active {
+    transform: translateY(1px);
+    background: #3a3a3a;
+}
+
+.print-btn.printing {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* ── Scrollbar Styling ────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #5a5a5a;
+}

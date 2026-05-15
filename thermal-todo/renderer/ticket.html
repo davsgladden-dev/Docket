@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';">
+    <title>Ticket</title>
+    <link rel="stylesheet" href="ticket.css">
+</head>
+<body>
+
+<div class="ticket" id="ticket">
+
+    <!-- Drag handle area -->
+    <div class="ticket-drag-handle"></div>
+
+    <!-- Close / Discard button -->
+    <button class="ticket-close-btn" id="close-btn" title="Discard ticket">✕</button>
+
+    <!-- Ticket content (populated by JS) -->
+    <div class="ticket-content" id="ticket-content">
+        <!-- Title (if any) -->
+        <div class="ticket-title" id="ticket-title"></div>
+
+        <!-- Dashed separator -->
+        <div class="ticket-separator"></div>
+
+        <!-- To-do items -->
+        <div class="ticket-items" id="ticket-items"></div>
+
+        <!-- Dashed separator -->
+        <div class="ticket-separator"></div>
+
+        <!-- Date/time stamp -->
+        <div class="ticket-timestamp" id="ticket-timestamp"></div>
+    </div>
+</div>
+
+<script src="ticket.js"></script>
+</body>
+</html>
