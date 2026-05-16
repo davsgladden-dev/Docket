@@ -2,28 +2,25 @@ const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 
-// ── Persistence ──────────────────────────────────────────
 const store = new Store({
     name: 'thermal-todo-data',
     defaults: { tickets: [] },
     clearInvalidConfig: true,
 });
 
-// ── Window References ────────────────────────────────────
 let printerWindow = null;
 const ticketWindows = new Map();
-
 const ICON_PATH = path.join(__dirname, 'assets', 'icon.png');
 
-// ── Printer Window ───────────────────────────────────────
 function createPrinterWindow() {
     printerWindow = new BrowserWindow({
-        width: 400,
-        height: 740,
+        width: 380,
+        height: 1020,           // taller window — more paper zone for long receipts
         resizable: false,
         frame: false,
-        transparent: false,
-        backgroundColor: '#1a1a1e',
+        transparent: true,
+        backgroundColor: '#00000000',
+        hasShadow: false,
         icon: ICON_PATH,
         webPreferences: {
             preload: path.join(__dirname, 'preload-printer.js'),
@@ -40,14 +37,10 @@ function createPrinterWindow() {
 
     printerWindow.on('closed', () => {
         printerWindow = null;
-        // On Windows/Linux, quit app when printer closes
-        if (process.platform !== 'darwin') {
-            app.quit();
-        }
+        if (process.platform !== 'darwin') app.quit();
     });
 }
 
-// ── Ticket Window ────────────────────────────────────────
 function createTicketWindow(ticketData) {
     const itemCount = ticketData.items.length;
     const hasTitle = ticketData.title && ticketData.title.trim().length > 0;
@@ -57,20 +50,12 @@ function createTicketWindow(ticketData) {
     const totalHeight = baseHeight + titleHeight + itemHeight + 40;
     const ticketWidth = 300;
 
-    // Screen bounds
     const { workAreaSize } = screen.getPrimaryDisplay();
     const { width: screenW, height: screenH } = workAreaSize;
     const existingCount = ticketWindows.size;
 
-    // Default position: staggered cascade, clamped to screen
-    const defaultX = Math.max(0, Math.min(
-        420 + existingCount * 30, screenW - ticketWidth - 10
-    ));
-    const defaultY = Math.max(0, Math.min(
-        100 + existingCount * 30, screenH - totalHeight - 10
-    ));
-
-    // Use saved position if available, clamped to screen
+    const defaultX = Math.max(0, Math.min(420 + existingCount * 30, screenW - ticketWidth - 10));
+    const defaultY = Math.max(0, Math.min(100 + existingCount * 30, screenH - totalHeight - 10));
     const x = Math.max(0, Math.min(ticketData.x ?? defaultX, screenW - ticketWidth));
     const y = Math.max(0, Math.min(ticketData.y ?? defaultY, screenH - 60));
 
@@ -93,7 +78,6 @@ function createTicketWindow(ticketData) {
     });
 
     win.loadFile(path.join(__dirname, 'renderer', 'ticket.html'));
-
     win.webContents.once('did-finish-load', () => {
         win.webContents.send('ticket:data', ticketData);
     });
@@ -106,14 +90,10 @@ function createTicketWindow(ticketData) {
         updateTicketInStore(ticketData.id, { x: wx, y: wy });
     });
 
-    win.on('closed', () => {
-        ticketWindows.delete(ticketData.id);
-    });
-
+    win.on('closed', () => ticketWindows.delete(ticketData.id));
     return win;
 }
 
-// ── Store Helpers ────────────────────────────────────────
 function saveTicketToStore(data) {
     const tickets = store.get('tickets');
     tickets.push(data);
@@ -133,7 +113,7 @@ function removeTicketFromStore(id) {
     store.set('tickets', store.get('tickets').filter(t => t.id !== id));
 }
 
-// ── IPC Handlers ─────────────────────────────────────────
+// ── IPC ──────────────────────────────────────────────────
 ipcMain.handle('printer:print-ticket', async (_event, ticketData) => {
     ticketData.id = `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     ticketData.createdAt = new Date().toISOString();
@@ -142,9 +122,7 @@ ipcMain.handle('printer:print-ticket', async (_event, ticketData) => {
     return ticketData.id;
 });
 
-ipcMain.on('ticket:update-items', (_event, { id, items }) => {
-    updateTicketInStore(id, { items });
-});
+ipcMain.on('ticket:update-items', (_event, { id, items }) => updateTicketInStore(id, { items }));
 
 ipcMain.on('ticket:discard', (_event, { id }) => {
     removeTicketFromStore(id);
@@ -156,39 +134,42 @@ ipcMain.handle('printer:get-tickets', async () => store.get('tickets'));
 
 ipcMain.on('ticket:resize', (_event, { id, width, height }) => {
     const win = ticketWindows.get(id);
-    if (win && !win.isDestroyed()) {
-        win.setSize(Math.round(width), Math.round(height));
-    }
+    if (win && !win.isDestroyed()) win.setSize(Math.round(width), Math.round(height));
 });
 
 ipcMain.on('window:minimize', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.minimize();
+    BrowserWindow.fromWebContents(event.sender)?.minimize();
 });
 
 ipcMain.on('window:close', (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close();
+});
+
+// ── Click-through fix ────────────────────────────────────
+// When the mouse is over a transparent part of the window,
+// forward mouse events to whatever is below (desktop, other apps).
+// When over the printer body or paper, capture events normally.
+ipcMain.on('set-ignore-mouse-events', (event, ignore) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.close();
+    if (win) {
+        // forward:true means mousemove still reaches us even when ignored
+        // so we can keep tracking position to toggle back when needed
+        win.setIgnoreMouseEvents(ignore, { forward: true });
+    }
 });
 
 // ── App Lifecycle ────────────────────────────────────────
 app.whenReady().then(() => {
     createPrinterWindow();
-
     const savedTickets = store.get('tickets') || [];
     for (const ticket of savedTickets) {
-        try {
-            createTicketWindow(ticket);
-        } catch (err) {
-            console.error('Failed to restore ticket:', ticket.id, err);
-        }
+        try { createTicketWindow(ticket); }
+        catch (err) { console.error('Failed to restore ticket:', ticket.id, err); }
     }
 });
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createPrinterWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createPrinterWindow();
 });
 
 app.on('window-all-closed', () => {

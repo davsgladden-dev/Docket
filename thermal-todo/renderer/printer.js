@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════
-// THERMAL TODO — PRINTER RENDERER (Final Polish)
+// THERMAL TODO — PRINTER RENDERER
+// Frameless floating printer, paper emerges upward
 // ═══════════════════════════════════════════════════════════
 
 const COLORS = [
@@ -7,10 +8,6 @@ const COLORS = [
     '#E8D6FF', '#FFE5CC', '#F5F2EE', '#D8EDD8',
 ];
 
-// ── Interlocking torn edge ───────────────────────────────
-// These depth values match ticket.css torn-edge EXACTLY.
-// Receipt gets depths as-is, ticket gets (12 - depth).
-// Together they interlock like two halves of one tear.
 const TORN_BOTTOM = `polygon(
   0% 0%, 100% 0%,
   100% calc(100% - 7px),
@@ -55,6 +52,7 @@ function initColorSelector() {
             selectedColor = color;
             container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
             swatch.classList.add('selected');
+            // NOTE: paper-peek only updates color, doesn't show — visibility controlled by print flow
             document.getElementById('paper-peek').style.backgroundColor = color;
         });
         container.appendChild(swatch);
@@ -128,9 +126,9 @@ function updateStatus(state) {
     switch (state) {
         case 'idle':
             text.textContent = 'READY';
-            dot.style.background = '#50d890';
-            dot.style.boxShadow = '0 0 4px rgba(80,216,144,0.5)';
-            text.style.color = '#50d890';
+            dot.style.background = 'var(--status-color)';
+            dot.style.boxShadow = '0 0 4px var(--status-glow)';
+            text.style.color = 'var(--status-color)';
             break;
         case 'printing':
             text.textContent = 'PRINTING';
@@ -146,6 +144,14 @@ function updateStatus(state) {
             text.style.color = '#50a0f0';
             break;
     }
+}
+
+// ── Paper Peek Visibility ────────────────────────────────
+function showPaperPeek() {
+    document.getElementById('paper-peek').classList.add('visible');
+}
+function hidePaperPeek() {
+    document.getElementById('paper-peek').classList.remove('visible');
 }
 
 // ── Receipt Preview Builder ──────────────────────────────
@@ -225,6 +231,9 @@ async function handlePrint() {
     buildReceiptPreview(currentTicketData);
     sounds.playPrint(2.1);
 
+    // Show paper peek inside slot while printing
+    showPaperPeek();
+
     await playPrintAnimation();
 
     printerState = 'ready';
@@ -244,42 +253,45 @@ function playPrintAnimation() {
         const receipt = document.getElementById('receipt-preview');
         const printer = document.getElementById('printer');
         const led = document.getElementById('led');
+        const brandLed = document.getElementById('brand-led');
         const printBtn = document.getElementById('print-btn');
 
         const tl = gsap.timeline({ onComplete: resolve });
 
         tl.to(printBtn, {
-            y: 4,
-            boxShadow: '0 1px 0 #252528, 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
-            duration: 0.12, ease: 'power2.in',
+            y: 3, duration: 0.12, ease: 'power2.in',
         }, 0);
 
         tl.to(printer, {
-            x: 0.8, duration: 0.035,
+            x: 0.6, duration: 0.035,
             repeat: 50, yoyo: true, ease: 'none',
         }, 0.15);
 
-        tl.to(led, {
+        tl.to([led, brandLed], {
             backgroundColor: '#f0b840',
             boxShadow: '0 0 8px rgba(240,184,64,0.6)',
             duration: 0.12, repeat: 17, yoyo: true, ease: 'none',
         }, 0.15);
 
+        // Paper emerges UP from the slot
         tl.fromTo(receipt,
-            { yPercent: 115 },
-            { yPercent: 0, duration: 2, ease: 'steps(28)' },
+            { yPercent: 100, y: 0 },
+            {
+                yPercent: 0,
+                y: 0,
+                duration: 2,
+                ease: 'steps(28)',
+            },
             0.25,
         );
 
         tl.to(printBtn, {
-            y: 0,
-            boxShadow: '0 5px 0 #252528, 0 7px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-            duration: 0.25, ease: 'power2.out',
+            y: 0, duration: 0.25, ease: 'power2.out',
         }, '-=0.4');
 
-        tl.to(led, {
-            backgroundColor: '#50d890',
-            boxShadow: '0 0 6px rgba(80,216,144,0.5)',
+        tl.to([led, brandLed], {
+            backgroundColor: 'var(--led-on)',
+            boxShadow: '0 0 5px var(--led-glow)',
             duration: 0.3,
         }, '-=0.3');
     });
@@ -303,7 +315,10 @@ function setupTearInteraction() {
         const onMove = (me) => {
             const delta = Math.max(0, startY - me.clientY);
             const progress = Math.min(delta / 60, 1);
-            gsap.set(receipt, { y: -delta * 0.85, rotation: -progress * 3.5 });
+            gsap.set(receipt, {
+                y: -delta * 0.85,
+                rotation: -progress * 3.5,
+            });
             if (delta > 55 && !hasTorn) {
                 hasTorn = true;
                 cleanup();
@@ -342,15 +357,16 @@ function setupTearInteraction() {
 async function completeTear() {
     printerState = 'tearing';
     const receipt = document.getElementById('receipt-preview');
-    const tray = document.getElementById('output-tray');
 
     receipt.classList.remove('tearable');
     sounds.playTear();
-    tray.style.overflow = 'visible';
     receipt.style.clipPath = TORN_BOTTOM;
 
+    // HIDE the paper peek when the paper is torn off
+    hidePaperPeek();
+
     await gsap.to(receipt, {
-        y: '-=200', rotation: -4 - Math.random() * 4,
+        y: '-=220', rotation: -4 - Math.random() * 4,
         opacity: 0, duration: 0.55, ease: 'power3.in',
     });
 
@@ -370,11 +386,15 @@ function cancelPrint() {
     receipt.classList.remove('tearable');
 
     gsap.to(receipt, {
-        yPercent: 115, y: 0, rotation: 0,
+        y: 0, rotation: 0,
         duration: 0.5, ease: 'power2.in',
         onComplete: () => {
+            gsap.set(receipt, {
+                yPercent: 100, y: 0, rotation: 0, opacity: 1,
+                clearProps: 'clipPath',
+            });
             receipt.innerHTML = '';
-            receipt.style.clipPath = '';
+            hidePaperPeek();
             setFormEnabled(true);
             updateStatus('idle');
             printerState = 'idle';
@@ -386,16 +406,21 @@ function cancelPrint() {
 // ── Reset Printer ────────────────────────────────────────
 function resetPrinter() {
     const receipt = document.getElementById('receipt-preview');
-    const tray = document.getElementById('output-tray');
 
     gsap.killTweensOf(receipt);
     if (breatheTween) { breatheTween.kill(); breatheTween = null; }
 
-    gsap.set(receipt, { yPercent: 115, y: 0, rotation: 0, opacity: 1 });
-    receipt.style.clipPath = '';
+    gsap.set(receipt, {
+        yPercent: 100,
+        y: 0,
+        rotation: 0,
+        opacity: 1,
+        clearProps: 'clipPath',
+    });
     receipt.classList.remove('tearable');
     receipt.innerHTML = '';
-    tray.style.overflow = 'hidden';
+
+    hidePaperPeek();
 
     setFormEnabled(true);
     updateStatus('idle');
@@ -451,11 +476,30 @@ function initKeyboard() {
     });
 }
 
+// ── Theme Toggle ─────────────────────────────────────────
+function initThemeToggle() {
+    const toggle = document.getElementById('theme-toggle-input');
+    const html = document.documentElement;
+
+    const saved = localStorage.getItem('thermal-theme');
+    if (saved === 'pixel') {
+        html.setAttribute('data-theme', 'pixel');
+        toggle.checked = true;
+    }
+
+    toggle.addEventListener('change', () => {
+        const isPixel = toggle.checked;
+        html.setAttribute('data-theme', isPixel ? 'pixel' : 'retro');
+        localStorage.setItem('thermal-theme', isPixel ? 'pixel' : 'retro');
+    });
+}
+
 // ── Boot ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initTitleBar();
     initColorSelector();
     initKeyboard();
+    initThemeToggle();
     setupTearInteraction();
 
     const c = document.getElementById('items-container');
@@ -464,6 +508,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('add-item-btn').addEventListener('click', addItemRow);
     document.getElementById('print-btn').addEventListener('click', handlePrint);
 
+    // Set the paper peek color (won't be visible until printing)
     document.getElementById('paper-peek').style.backgroundColor = selectedColor;
-    gsap.set('#receipt-preview', { yPercent: 115 });
+
+    // Hide receipt initially (below slot)
+    gsap.set('#receipt-preview', { yPercent: 100 });
 });
