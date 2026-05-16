@@ -6,7 +6,7 @@
 
 @font-face {
     font-family: 'PressStart2P';
-    src: url('./fonts/press-start-2p.woff2') format('woff2');
+    src: url('../Assets/fonts/PressStart2P-Regular.woff2') format('woff2');
     font-weight: normal;
     font-style: normal;
     font-display: block;
