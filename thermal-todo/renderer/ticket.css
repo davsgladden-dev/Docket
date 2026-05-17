@@ -1,8 +1,12 @@
 /* ═══════════════════════════════════════════════════════════
-   THERMAL TODO — TICKET (Final Polish)
+   DOCKET — TICKET (Final Polish)
    ═══════════════════════════════════════════════════════════ */
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --ticket-color: #F5F2EE;
+}
 
 body {
     background: transparent;
@@ -14,11 +18,12 @@ body {
 /* ── Ticket Body ──────────────────────────────────────── */
 .ticket {
     background: var(--ticket-color, #F5F2EE);
-    border-radius: 0 0 5px 5px;
-    padding: 18px 18px 14px;
+    border-radius: 5px 5px 0 0;
+    padding: 14px 18px 18px;
     position: relative;
     min-height: 80px;
-    margin-top: 12px;
+    margin-bottom: 12px;
+    margin-top: 0;
     box-shadow:
             0 3px 10px rgba(0,0,0,0.18),
             0 1px 3px rgba(0,0,0,0.12);
@@ -40,36 +45,36 @@ body {
    12px max depth ensures the two halves fit perfectly.   */
 .ticket-torn-edge {
     position: absolute;
-    top: -11px;
+    bottom: -11px;
     left: 0;
     right: 0;
     height: 12px;
     background: var(--ticket-color, #F5F2EE);
     z-index: 2;
     clip-path: polygon(
-            0% 5px,
-            5% 9px,
-            10% 3px,
-            15% 7px,
-            20% 1px,
-            25% 10px,
-            30% 4px,
-            35% 8px,
-            40% 2px,
-            45% 6px,
-            50% 9px,
-            55% 1px,
-            60% 10px,
-            65% 5px,
-            70% 3px,
-            75% 8px,
-            80% 2px,
-            85% 7px,
-            90% 4px,
-            95% 9px,
-            100% 5px,
-            100% 100%,
-            0% 100%
+            0% 0%,
+            100% 0%,
+            100% calc(100% - 5px),
+            95% calc(100% - 9px),
+            90% calc(100% - 3px),
+            85% calc(100% - 7px),
+            80% calc(100% - 1px),
+            75% calc(100% - 10px),
+            70% calc(100% - 4px),
+            65% calc(100% - 8px),
+            60% calc(100% - 2px),
+            55% calc(100% - 6px),
+            50% calc(100% - 9px),
+            45% calc(100% - 1px),
+            40% calc(100% - 10px),
+            35% calc(100% - 5px),
+            30% calc(100% - 3px),
+            25% calc(100% - 8px),
+            20% calc(100% - 2px),
+            15% calc(100% - 7px),
+            10% calc(100% - 4px),
+            5% calc(100% - 9px),
+            0% calc(100% - 5px)
     );
 }
 

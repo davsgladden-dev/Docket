@@ -1,17 +1,11 @@
-// preload-printer.js
-// This runs BEFORE the renderer page loads.
-// It exposes a safe, limited API to the renderer via contextBridge.
-
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('thermalAPI', {
-    // Send a new ticket to be created
-    printTicket: (ticketData) => ipcRenderer.invoke('printer:print-ticket', ticketData),
-
-    // Get all existing tickets (for UI state if needed)
-    getTickets: () => ipcRenderer.invoke('printer:get-tickets'),
-
-    // Window controls (since we removed the frame)
-    minimizeWindow: () => ipcRenderer.send('window:minimize'),
-    closeWindow: () => ipcRenderer.send('window:close')
+contextBridge.exposeInMainWorld('docketAPI', {
+    printStart:     (data) => ipcRenderer.send('printer:print-start', data),
+    cancelPrint:    ()     => ipcRenderer.send('printer:cancel'),
+    getTickets:     ()     => ipcRenderer.invoke('printer:get-tickets'),
+    minimizeWindow: ()     => ipcRenderer.send('window:minimize'),
+    closeWindow:    ()     => ipcRenderer.send('window:close'),
+    onReset:        (cb)   => ipcRenderer.on('printer:reset',       () => cb()),
+    onPaperReady:   (cb)   => ipcRenderer.on('printer:paper-ready', () => cb()),
 });

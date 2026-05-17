@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// THERMAL TODO — PROCEDURAL SOUND ENGINE
+// DOCKET — PROCEDURAL SOUND ENGINE
 // All sounds synthesized via Web Audio API. No files needed.
 // ═══════════════════════════════════════════════════════════
 
@@ -33,86 +33,141 @@ class SoundEngine {
         return buf;
     }
 
-    // ── THERMAL PRINTER ─────────────────────────────────────
-    // Three layers: stepper motor clicks + low hum + print head noise
+    // ── THERMAL PRINTER ─────────────────────────────────────────
+// Replace ONLY the playPrint method in your sounds.js with this.
+// Everything else (playTear, playCheck, etc.) stays the same.
+//
+// Sound design: models the actual thermal printer motion —
+//   SWEEP: head moves left→right (high-pitched whine)
+//   ADVANCE: paper feeds one line (low mechanical thunk)
+//   Repeat for duration of print.
+//
     playPrint(duration = 2.1) {
         const ctx = this._ensureContext();
         const now = ctx.currentTime;
 
-        // Master gain (fade in/out)
+        // How many sweep+advance cycles fit in the duration
+        // Real thermal printers do roughly 3-5 lines/sec
+        const linesPerSec = 4;
+        const cycleTime   = 1 / linesPerSec;           // ~0.25s per line
+        const sweepTime   = cycleTime * 0.72;           // 72% sweep
+        const advanceTime = cycleTime * 0.28;           // 28% paper advance
+
+        const totalCycles = Math.floor(duration / cycleTime);
+
+        // Master gain — fade in/out
         const master = ctx.createGain();
         master.gain.setValueAtTime(0, now);
-        master.gain.linearRampToValueAtTime(0.18, now + 0.06);
-        master.gain.setValueAtTime(0.18, now + duration - 0.12);
+        master.gain.linearRampToValueAtTime(0.2, now + 0.05);
+        master.gain.setValueAtTime(0.2, now + duration - 0.08);
         master.gain.linearRampToValueAtTime(0, now + duration);
         master.connect(ctx.destination);
 
-        // ── Layer 1: Stepper motor clicks (dominant) ──────────
-        const stepsPerSec = 14;
-        const samplesPerStep = Math.floor(ctx.sampleRate / stepsPerSec);
-        const stepLen = Math.floor(ctx.sampleRate * duration);
-        const stepBuf = ctx.createBuffer(1, stepLen, ctx.sampleRate);
-        const stepData = stepBuf.getChannelData(0);
+        for (let i = 0; i < totalCycles; i++) {
+            const cycleStart = now + i * cycleTime;
 
-        for (let i = 0; i < stepLen; i++) {
-            const posInStep = (i % samplesPerStep) / samplesPerStep;
-            // Sharp burst at start of each step, then silence
-            const env = posInStep < 0.12 ? (1 - posInStep / 0.12) : 0;
-            stepData[i] = (Math.random() * 2 - 1) * env;
+            // ── SWEEP: head moving across the paper ──────────────
+            // A short noise burst bandpass-filtered to a tight high-
+            // frequency band, panned slightly left→right using gain
+            // nodes on L/R channels (stereo not available in mono,
+            // so we simulate with pitch glide instead — higher pitch
+            // as head accelerates from left, slight drop at right end).
+            const sweepLen = Math.floor(ctx.sampleRate * sweepTime);
+            const sweepBuf = ctx.createBuffer(1, sweepLen, ctx.sampleRate);
+            const sweepData = sweepBuf.getChannelData(0);
+
+            for (let s = 0; s < sweepLen; s++) {
+                const t   = s / ctx.sampleRate;
+                const pos = t / sweepTime;           // 0→1 across the sweep
+
+                // Envelope: quick ramp up, hold, quick ramp down at edges
+                const attack  = Math.min(pos / 0.08, 1);
+                const release = Math.min((1 - pos) / 0.08, 1);
+                const env     = Math.min(attack, release);
+
+                // The print head buzz — mix of noise and a slight tonal component
+                const noise  = (Math.random() * 2 - 1);
+                sweepData[s] = noise * env;
+            }
+
+            const sweepSrc = ctx.createBufferSource();
+            sweepSrc.buffer = sweepBuf;
+
+            // Bandpass the sweep: thermal head characteristic ~3–5kHz
+            const sweepBP = ctx.createBiquadFilter();
+            sweepBP.type      = 'bandpass';
+            sweepBP.frequency.value = 3600;
+            sweepBP.Q.value   = 3;
+
+            // High shelf adds the "edge" of the head on paper
+            const sweepHS = ctx.createBiquadFilter();
+            sweepHS.type      = 'highshelf';
+            sweepHS.frequency.value = 6000;
+            sweepHS.gain.value      = 4;
+
+            const sweepGain = ctx.createGain();
+            sweepGain.gain.value = 0.32;
+
+            sweepSrc.connect(sweepBP);
+            sweepBP.connect(sweepHS);
+            sweepHS.connect(sweepGain);
+            sweepGain.connect(master);
+            sweepSrc.start(cycleStart);
+            sweepSrc.stop(cycleStart + sweepTime);
+
+            // Pitch glide on the sweep — subtle frequency modulation
+            // simulates the head changing direction/speed slightly
+            sweepBP.frequency.setValueAtTime(3200, cycleStart);
+            sweepBP.frequency.linearRampToValueAtTime(4200, cycleStart + sweepTime * 0.5);
+            sweepBP.frequency.linearRampToValueAtTime(3400, cycleStart + sweepTime);
+
+            // ── ADVANCE: paper steps forward one line ─────────────
+            // A short low thunk — the stepper motor kicking the paper
+            // roller forward by one line height.
+            const advStart = cycleStart + sweepTime;
+
+            const advOsc = ctx.createOscillator();
+            advOsc.type = 'sine';
+            // Short pitch drop — mechanical "clunk" character
+            advOsc.frequency.setValueAtTime(220, advStart);
+            advOsc.frequency.exponentialRampToValueAtTime(80, advStart + advanceTime);
+
+            const advGain = ctx.createGain();
+            advGain.gain.setValueAtTime(0, advStart);
+            advGain.gain.linearRampToValueAtTime(0.12, advStart + 0.008);  // fast attack
+            advGain.gain.exponentialRampToValueAtTime(0.001, advStart + advanceTime);
+
+            // Add a noise component to the advance for the "paper grip" texture
+            const advNoiseLen = Math.floor(ctx.sampleRate * advanceTime);
+            const advNoiseBuf = ctx.createBuffer(1, advNoiseLen, ctx.sampleRate);
+            const advNoiseData = advNoiseBuf.getChannelData(0);
+            for (let s = 0; s < advNoiseLen; s++) {
+                const t = s / ctx.sampleRate;
+                advNoiseData[s] = (Math.random() * 2 - 1) * Math.exp(-t * 30);
+            }
+
+            const advNoiseSrc = ctx.createBufferSource();
+            advNoiseSrc.buffer = advNoiseBuf;
+
+            const advNoiseLP = ctx.createBiquadFilter();
+            advNoiseLP.type = 'lowpass';
+            advNoiseLP.frequency.value = 800;
+
+            const advNoiseGain = ctx.createGain();
+            advNoiseGain.gain.value = 0.15;
+
+            advOsc.connect(advGain);
+            advGain.connect(master);
+
+            advNoiseSrc.connect(advNoiseLP);
+            advNoiseLP.connect(advNoiseGain);
+            advNoiseGain.connect(master);
+
+            advOsc.start(advStart);
+            advOsc.stop(advStart + advanceTime);
+            advNoiseSrc.start(advStart);
+            advNoiseSrc.stop(advStart + advanceTime);
         }
-
-        const stepSrc = ctx.createBufferSource();
-        stepSrc.buffer = stepBuf;
-
-        const stepBP = ctx.createBiquadFilter();
-        stepBP.type = 'bandpass';
-        stepBP.frequency.value = 1100;
-        stepBP.Q.value = 1.8;
-
-        const stepGain = ctx.createGain();
-        stepGain.gain.value = 0.7;
-
-        stepSrc.connect(stepBP);
-        stepBP.connect(stepGain);
-        stepGain.connect(master);
-        stepSrc.start(now);
-        stepSrc.stop(now + duration);
-
-        // ── Layer 2: Low mechanical hum ───────────────────────
-        const hum = ctx.createOscillator();
-        hum.type = 'sawtooth';
-        hum.frequency.value = 115;
-
-        const humLP = ctx.createBiquadFilter();
-        humLP.type = 'lowpass';
-        humLP.frequency.value = 280;
-
-        const humGain = ctx.createGain();
-        humGain.gain.value = 0.09;
-
-        hum.connect(humLP);
-        humLP.connect(humGain);
-        humGain.connect(master);
-        hum.start(now);
-        hum.stop(now + duration);
-
-        // ── Layer 3: High-freq print head whine ───────────────
-        const noiseSrc = ctx.createBufferSource();
-        noiseSrc.buffer = this._noiseBuffer(duration);
-
-        const noiseBP = ctx.createBiquadFilter();
-        noiseBP.type = 'bandpass';
-        noiseBP.frequency.value = 4200;
-        noiseBP.Q.value = 3;
-
-        const noiseGain = ctx.createGain();
-        noiseGain.gain.value = 0.035;
-
-        noiseSrc.connect(noiseBP);
-        noiseBP.connect(noiseGain);
-        noiseGain.connect(master);
-        noiseSrc.start(now);
-        noiseSrc.stop(now + duration);
 
         return {
             stop: () => {

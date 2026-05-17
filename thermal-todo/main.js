@@ -2,28 +2,27 @@ const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 
-// ── Persistence ──────────────────────────────────────────
 const store = new Store({
-    name: 'thermal-todo-data',
+    name: 'docket-data',
     defaults: { tickets: [] },
     clearInvalidConfig: true,
 });
 
-// ── Window References ────────────────────────────────────
 let printerWindow = null;
+let paperWindow = null;
 const ticketWindows = new Map();
-
 const ICON_PATH = path.join(__dirname, 'assets', 'icon.png');
 
 // ── Printer Window ───────────────────────────────────────
 function createPrinterWindow() {
     printerWindow = new BrowserWindow({
-        width: 400,
-        height: 740,
+        width: 380,
+        height: 600,
         resizable: false,
         frame: false,
-        transparent: false,
-        backgroundColor: '#1a1a1e',
+        transparent: true,
+        backgroundColor: '#00000000',
+        hasShadow: false,
         icon: ICON_PATH,
         webPreferences: {
             preload: path.join(__dirname, 'preload-printer.js'),
@@ -40,14 +39,63 @@ function createPrinterWindow() {
 
     printerWindow.on('closed', () => {
         printerWindow = null;
-        // On Windows/Linux, quit app when printer closes
-        if (process.platform !== 'darwin') {
-            app.quit();
-        }
+        if (process.platform !== 'darwin') app.quit();
     });
 }
 
-// ── Ticket Window ────────────────────────────────────────
+// ── Paper Window ─────────────────────────────────────────
+// Created when printing starts. Positioned above the printer slot mouth.
+// Fixed height covers the maximum possible receipt height.
+function createPaperWindow(ticketData) {
+    if (!printerWindow || printerWindow.isDestroyed()) return;
+    if (paperWindow && !paperWindow.isDestroyed()) {
+        paperWindow.close();
+    }
+
+    const PAPER_H = 520;
+    const PAPER_W = 320;
+    // Slot mouth is at y≈46 from the printer window top (slot top=24px + slot height=22px).
+    const SLOT_MOUTH_Y = 46;
+    const [px, py] = printerWindow.getPosition();
+    const paperX = px + Math.round((380 - PAPER_W) / 2);
+    const paperY = py + SLOT_MOUTH_Y - PAPER_H;
+
+    paperWindow = new BrowserWindow({
+        width: PAPER_W,
+        height: PAPER_H,
+        x: paperX,
+        y: paperY,
+        frame: false,
+        transparent: true,
+        backgroundColor: '#00000000',
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        hasShadow: false,
+        resizable: false,
+        show: false,
+        icon: ICON_PATH,
+        webPreferences: {
+            preload: path.join(__dirname, 'preload-paper.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+        },
+    });
+
+    paperWindow.setIgnoreMouseEvents(true, { forward: true });
+    paperWindow.once('ready-to-show', () => {
+        if (!paperWindow || paperWindow.isDestroyed()) return;
+        paperWindow.show();
+    });
+    paperWindow.loadFile(path.join(__dirname, 'renderer', 'paper.html'));
+    paperWindow.webContents.once('did-finish-load', () => {
+        if (!paperWindow || paperWindow.isDestroyed()) return;
+        paperWindow.webContents.send('paper:data', ticketData);
+    });
+
+    paperWindow.on('closed', () => { paperWindow = null; });
+}
+
+// ── Ticket Windows ───────────────────────────────────────
 function createTicketWindow(ticketData) {
     const itemCount = ticketData.items.length;
     const hasTitle = ticketData.title && ticketData.title.trim().length > 0;
@@ -57,20 +105,16 @@ function createTicketWindow(ticketData) {
     const totalHeight = baseHeight + titleHeight + itemHeight + 40;
     const ticketWidth = 300;
 
-    // Screen bounds
     const { workAreaSize } = screen.getPrimaryDisplay();
     const { width: screenW, height: screenH } = workAreaSize;
     const existingCount = ticketWindows.size;
 
-    // Default position: staggered cascade, clamped to screen
-    const defaultX = Math.max(0, Math.min(
-        420 + existingCount * 30, screenW - ticketWidth - 10
-    ));
-    const defaultY = Math.max(0, Math.min(
-        100 + existingCount * 30, screenH - totalHeight - 10
-    ));
-
-    // Use saved position if available, clamped to screen
+    const [printerX, printerY] = printerWindow ? printerWindow.getPosition() : [0, 0];
+    const printerW = printerWindow ? printerWindow.getBounds().width : 400;
+    const spawnRight = printerX + printerW + 16 + existingCount * 24;
+    const spawnLeft  = printerX - ticketWidth - 16 + existingCount * 24;
+    const defaultX = (spawnRight + ticketWidth <= screenW) ? spawnRight : Math.max(0, spawnLeft);
+    const defaultY = Math.max(0, Math.min(printerY + existingCount * 28, screenH - totalHeight - 10));
     const x = Math.max(0, Math.min(ticketData.x ?? defaultX, screenW - ticketWidth));
     const y = Math.max(0, Math.min(ticketData.y ?? defaultY, screenH - 60));
 
@@ -93,7 +137,6 @@ function createTicketWindow(ticketData) {
     });
 
     win.loadFile(path.join(__dirname, 'renderer', 'ticket.html'));
-
     win.webContents.once('did-finish-load', () => {
         win.webContents.send('ticket:data', ticketData);
     });
@@ -106,10 +149,7 @@ function createTicketWindow(ticketData) {
         updateTicketInStore(ticketData.id, { x: wx, y: wy });
     });
 
-    win.on('closed', () => {
-        ticketWindows.delete(ticketData.id);
-    });
-
+    win.on('closed', () => ticketWindows.delete(ticketData.id));
     return win;
 }
 
@@ -133,18 +173,58 @@ function removeTicketFromStore(id) {
     store.set('tickets', store.get('tickets').filter(t => t.id !== id));
 }
 
-// ── IPC Handlers ─────────────────────────────────────────
-ipcMain.handle('printer:print-ticket', async (_event, ticketData) => {
+// ── IPC ──────────────────────────────────────────────────
+
+// Printer window requests to start a print job → open paper window
+ipcMain.on('printer:print-start', (_event, ticketData) => {
+    createPaperWindow(ticketData);
+});
+
+// Printer window cancels (ESC) → close paper window, reset printer
+ipcMain.on('printer:cancel', () => {
+    if (paperWindow && !paperWindow.isDestroyed()) {
+        paperWindow.close();
+        paperWindow = null;
+    }
+    if (printerWindow && !printerWindow.isDestroyed()) {
+        printerWindow.webContents.send('printer:reset');
+    }
+});
+
+// Paper window: receipt emerge animation complete → notify printer to show TEAR status
+ipcMain.on('paper:ready', () => {
+    if (printerWindow && !printerWindow.isDestroyed()) {
+        printerWindow.webContents.send('printer:paper-ready');
+    }
+});
+
+// Paper window: receipt torn → save ticket, spawn ticket window, reset printer
+ipcMain.on('paper:torn', (_event, ticketData) => {
     ticketData.id = `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     ticketData.createdAt = new Date().toISOString();
     saveTicketToStore(ticketData);
     createTicketWindow(ticketData);
-    return ticketData.id;
+
+    if (paperWindow && !paperWindow.isDestroyed()) {
+        paperWindow.close();
+        paperWindow = null;
+    }
+    if (printerWindow && !printerWindow.isDestroyed()) {
+        printerWindow.webContents.send('printer:reset');
+    }
 });
 
-ipcMain.on('ticket:update-items', (_event, { id, items }) => {
-    updateTicketInStore(id, { items });
+// Paper window mouse click-through toggle
+ipcMain.on('paper:set-ignore-mouse', (_event, { ignore }) => {
+    if (!paperWindow || paperWindow.isDestroyed()) return;
+    if (ignore) {
+        paperWindow.setIgnoreMouseEvents(true, { forward: true });
+    } else {
+        paperWindow.setIgnoreMouseEvents(false);
+    }
 });
+
+ipcMain.on('ticket:update-items', (_event, { id, items }) => updateTicketInStore(id, { items }));
 
 ipcMain.on('ticket:discard', (_event, { id }) => {
     removeTicketFromStore(id);
@@ -156,39 +236,29 @@ ipcMain.handle('printer:get-tickets', async () => store.get('tickets'));
 
 ipcMain.on('ticket:resize', (_event, { id, width, height }) => {
     const win = ticketWindows.get(id);
-    if (win && !win.isDestroyed()) {
-        win.setSize(Math.round(width), Math.round(height));
-    }
+    if (win && !win.isDestroyed()) win.setSize(Math.round(width), Math.round(height));
 });
 
 ipcMain.on('window:minimize', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.minimize();
+    BrowserWindow.fromWebContents(event.sender)?.minimize();
 });
 
 ipcMain.on('window:close', (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.close();
+    BrowserWindow.fromWebContents(event.sender)?.close();
 });
 
 // ── App Lifecycle ────────────────────────────────────────
 app.whenReady().then(() => {
     createPrinterWindow();
-
     const savedTickets = store.get('tickets') || [];
     for (const ticket of savedTickets) {
-        try {
-            createTicketWindow(ticket);
-        } catch (err) {
-            console.error('Failed to restore ticket:', ticket.id, err);
-        }
+        try { createTicketWindow(ticket); }
+        catch (err) { console.error('Failed to restore ticket:', ticket.id, err); }
     }
 });
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createPrinterWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createPrinterWindow();
 });
 
 app.on('window-all-closed', () => {
