@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// THERMAL TODO — PAPER WINDOW RENDERER
+// DOCKET — PAPER WINDOW RENDERER
 // Handles receipt display, emerge animation, and tear interaction.
 // This window is created by main when printing starts and is
 // positioned so its bottom edge aligns with the printer slot mouth.

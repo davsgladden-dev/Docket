@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// THERMAL TODO — PRINTER RENDERER
+// DOCKET — PRINTER RENDERER
 // Handles the printer UI: controls, item entry, print flow.
 // Receipt display and tear interaction live in paper.js.
 // ═══════════════════════════════════════════════════════════
@@ -40,7 +40,7 @@ function createItemRow(value = '') {
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'thermal-input item-input';
+    input.className = 'docket-input item-input';
     input.placeholder = 'Add item...';
     input.maxLength = 50;
     input.value = value;
@@ -152,7 +152,7 @@ async function handlePrint() {
     updateStatus('printing');
     showPaperPeek();
 
-    window.thermalAPI.printStart(currentTicketData);
+    window.docketAPI.printStart(currentTicketData);
     await playPrinterAnimation();
 }
 
@@ -221,9 +221,9 @@ function setFormEnabled(enabled) {
 // ── Title Bar ────────────────────────────────────────────
 function initTitleBar() {
     document.getElementById('btn-minimize').addEventListener('click',
-        () => window.thermalAPI.minimizeWindow());
+        () => window.docketAPI.minimizeWindow());
     document.getElementById('btn-close').addEventListener('click',
-        () => window.thermalAPI.closeWindow());
+        () => window.docketAPI.closeWindow());
 }
 
 // ── Keyboard Shortcuts ───────────────────────────────────
@@ -234,7 +234,7 @@ function initKeyboard() {
             handlePrint();
         }
         if (e.key === 'Escape' && printerState === 'printing') {
-            window.thermalAPI.cancelPrint();
+            window.docketAPI.cancelPrint();
         }
     });
 }
@@ -244,7 +244,7 @@ function initThemeToggle() {
     const toggle = document.getElementById('theme-toggle-input');
     const html = document.documentElement;
 
-    const saved = localStorage.getItem('thermal-theme');
+    const saved = localStorage.getItem('docket-theme');
     if (saved === 'pixel') {
         html.setAttribute('data-theme', 'pixel');
         toggle.checked = true;
@@ -253,7 +253,7 @@ function initThemeToggle() {
     toggle.addEventListener('change', () => {
         const isPixel = toggle.checked;
         html.setAttribute('data-theme', isPixel ? 'pixel' : 'retro');
-        localStorage.setItem('thermal-theme', isPixel ? 'pixel' : 'retro');
+        localStorage.setItem('docket-theme', isPixel ? 'pixel' : 'retro');
     });
 }
 
@@ -273,8 +273,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('paper-peek').style.backgroundColor = selectedColor;
 
     // Main process signals
-    window.thermalAPI.onReset(resetPrinter);
-    window.thermalAPI.onPaperReady(() => {
+    window.docketAPI.onReset(resetPrinter);
+    window.docketAPI.onPaperReady(() => {
         if (printerState === 'printing') updateStatus('ready');
     });
 });

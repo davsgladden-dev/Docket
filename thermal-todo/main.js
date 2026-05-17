@@ -3,7 +3,7 @@ const path = require('path');
 const Store = require('electron-store');
 
 const store = new Store({
-    name: 'thermal-todo-data',
+    name: 'docket-data',
     defaults: { tickets: [] },
     clearInvalidConfig: true,
 });

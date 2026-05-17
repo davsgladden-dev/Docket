@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// THERMAL TODO — TICKET RENDERER
+// DOCKET — TICKET RENDERER
 // Confetti, sounds, crumple animation, resize bug fix
 // ═══════════════════════════════════════════════════════════
 

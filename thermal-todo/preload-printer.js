@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('thermalAPI', {
+contextBridge.exposeInMainWorld('docketAPI', {
     printStart:     (data) => ipcRenderer.send('printer:print-start', data),
     cancelPrint:    ()     => ipcRenderer.send('printer:cancel'),
     getTickets:     ()     => ipcRenderer.invoke('printer:get-tickets'),

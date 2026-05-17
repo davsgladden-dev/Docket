@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// THERMAL TODO — PROCEDURAL SOUND ENGINE
+// DOCKET — PROCEDURAL SOUND ENGINE
 // All sounds synthesized via Web Audio API. No files needed.
 // ═══════════════════════════════════════════════════════════
 

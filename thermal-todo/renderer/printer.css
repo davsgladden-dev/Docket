@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   THERMAL TODO — Frameless Floating Printer
+   DOCKET — Frameless Floating Printer
    Retro theme: warm cream/sage with soft 3D depth
    Pixel theme: genuine pixel-art chunky box, hard edges
    ═══════════════════════════════════════════════════════════ */
@@ -500,7 +500,7 @@ html, body {
 [data-theme="pixel"] .color-swatch.selected::after { font-size: 11px; }
 
 /* ── Inputs ─────────────────────────────────────────────── */
-.thermal-input {
+.docket-input {
     background: var(--input-bg);
     border: 1.5px solid var(--input-border);
     border-radius: var(--r-input);
@@ -512,18 +512,18 @@ html, body {
     box-shadow: inset 0 1px 4px rgba(0,0,0,0.4);
     transition: border-color 0.2s, box-shadow 0.2s;
 }
-.thermal-input:focus {
+.docket-input:focus {
     border-color: var(--status-green);
     box-shadow: inset 0 1px 4px rgba(0,0,0,0.4), 0 0 0 1px var(--status-glow);
 }
-.thermal-input::placeholder { color: var(--input-ph); }
+.docket-input::placeholder { color: var(--input-ph); }
 
-[data-theme="pixel"] .thermal-input {
+[data-theme="pixel"] .docket-input {
     border: 2px solid var(--input-border);
     box-shadow: inset 2px 2px 0 rgba(0,0,0,0.7);
     font-size: 11px; padding: 9px 10px;
 }
-[data-theme="pixel"] .thermal-input:focus {
+[data-theme="pixel"] .docket-input:focus {
     border-color: var(--status-green);
     box-shadow: inset 2px 2px 0 rgba(0,0,0,0.7), 0 0 0 1px var(--led-color);
 }

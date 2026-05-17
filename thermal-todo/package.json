@@ -1,7 +1,7 @@
 {
-  "name": "thermal-todo",
+  "name": "docket",
   "version": "1.0.0",
-  "description": "A thermal receipt printer to-do list for your desktop",
+  "description": "A receipt-printer to-do list for your desktop",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -12,8 +12,8 @@
     "build:linux": "electron-builder --linux"
   },
   "build": {
-    "appId": "com.thermaltodo.app",
-    "productName": "Thermal Todo",
+    "appId": "com.docket.app",
+    "productName": "Docket",
     "directories": {
       "output": "dist"
     },
