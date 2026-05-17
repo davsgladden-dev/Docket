@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 // THERMAL TODO — PRINTER RENDERER
-// Frameless floating printer, paper emerges upward
+// Handles the printer UI: controls, item entry, print flow.
+// Receipt display and tear interaction live in paper.js.
 // ═══════════════════════════════════════════════════════════
 
 const COLORS = [
@@ -8,38 +9,12 @@ const COLORS = [
     '#E8D6FF', '#FFE5CC', '#F5F2EE', '#D8EDD8',
 ];
 
-const TORN_BOTTOM = `polygon(
-  0% 0%, 100% 0%,
-  100% calc(100% - 7px),
-  95% calc(100% - 3px),
-  90% calc(100% - 8px),
-  85% calc(100% - 5px),
-  80% calc(100% - 10px),
-  75% calc(100% - 4px),
-  70% calc(100% - 9px),
-  65% calc(100% - 7px),
-  60% calc(100% - 2px),
-  55% calc(100% - 11px),
-  50% calc(100% - 3px),
-  45% calc(100% - 6px),
-  40% calc(100% - 10px),
-  35% calc(100% - 4px),
-  30% calc(100% - 8px),
-  25% calc(100% - 2px),
-  20% calc(100% - 11px),
-  15% calc(100% - 5px),
-  10% calc(100% - 9px),
-  5% calc(100% - 3px),
-  0% calc(100% - 7px)
-)`;
-
 const MAX_ITEMS = 15;
 
 // ── State ────────────────────────────────────────────────
 let printerState = 'idle';
 let selectedColor = COLORS[0];
 let currentTicketData = null;
-let breatheTween = null;
 
 // ── Color Selector ───────────────────────────────────────
 function initColorSelector() {
@@ -52,7 +27,6 @@ function initColorSelector() {
             selectedColor = color;
             container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
             swatch.classList.add('selected');
-            // NOTE: paper-peek only updates color, doesn't show — visibility controlled by print flow
             document.getElementById('paper-peek').style.backgroundColor = color;
         });
         container.appendChild(swatch);
@@ -117,7 +91,7 @@ function getItemTexts() {
 
 // ── Status Display ───────────────────────────────────────
 function updateStatus(state) {
-    const dot = document.getElementById('status-dot');
+    const dot  = document.getElementById('status-dot');
     const text = document.getElementById('status-text');
     const display = document.getElementById('status-display');
 
@@ -126,83 +100,32 @@ function updateStatus(state) {
     switch (state) {
         case 'idle':
             text.textContent = 'READY';
-            dot.style.background = 'var(--status-color)';
-            dot.style.boxShadow = '0 0 4px var(--status-glow)';
-            text.style.color = 'var(--status-color)';
+            dot.style.background  = 'var(--status-green)';
+            dot.style.boxShadow   = '0 0 4px var(--status-glow)';
+            text.style.color      = 'var(--status-green)';
             break;
         case 'printing':
             text.textContent = 'PRINTING';
-            dot.style.background = '#f0b840';
-            dot.style.boxShadow = '0 0 4px rgba(240,184,64,0.5)';
-            text.style.color = '#f0b840';
+            dot.style.background  = '#f0b840';
+            dot.style.boxShadow   = '0 0 4px rgba(240,184,64,0.5)';
+            text.style.color      = '#f0b840';
             display.classList.add('printing');
             break;
         case 'ready':
             text.textContent = 'TEAR ↑';
-            dot.style.background = '#50a0f0';
-            dot.style.boxShadow = '0 0 4px rgba(80,160,240,0.5)';
-            text.style.color = '#50a0f0';
+            dot.style.background  = '#50a0f0';
+            dot.style.boxShadow   = '0 0 4px rgba(80,160,240,0.5)';
+            text.style.color      = '#50a0f0';
             break;
     }
 }
 
-// ── Paper Peek Visibility ────────────────────────────────
+// ── Paper Peek ───────────────────────────────────────────
 function showPaperPeek() {
     document.getElementById('paper-peek').classList.add('visible');
 }
 function hidePaperPeek() {
     document.getElementById('paper-peek').classList.remove('visible');
-}
-
-// ── Receipt Preview Builder ──────────────────────────────
-function buildReceiptPreview(data) {
-    const preview = document.getElementById('receipt-preview');
-    preview.style.backgroundColor = data.color;
-    preview.innerHTML = '';
-
-    if (data.title) {
-        const title = document.createElement('div');
-        title.className = 'rp-title';
-        title.textContent = data.title;
-        preview.appendChild(title);
-    }
-
-    preview.appendChild(makeSep());
-
-    data.items.forEach(item => {
-        const row = document.createElement('div');
-        row.className = 'rp-item';
-        const cb = document.createElement('div');
-        cb.className = 'rp-checkbox';
-        const txt = document.createElement('span');
-        txt.className = 'rp-item-text';
-        txt.textContent = item.text;
-        row.append(cb, txt);
-        preview.appendChild(row);
-    });
-
-    preview.appendChild(makeSep());
-
-    const ts = document.createElement('div');
-    ts.className = 'rp-timestamp';
-    ts.textContent = formatTimestamp(new Date());
-    preview.appendChild(ts);
-
-    const tear = document.createElement('div');
-    tear.className = 'rp-tear-line';
-    tear.innerHTML = '<span>✂</span><div class="rp-tear-dashes"></div><span>✂</span>';
-    preview.appendChild(tear);
-
-    const hint = document.createElement('span');
-    hint.className = 'rp-tear-hint';
-    hint.textContent = '↑ pull to tear ↑';
-    preview.appendChild(hint);
-}
-
-function makeSep() {
-    const s = document.createElement('div');
-    s.className = 'rp-separator';
-    return s;
 }
 
 // ── Print Flow ───────────────────────────────────────────
@@ -214,8 +137,7 @@ async function handlePrint() {
         const c = document.getElementById('items-container');
         c.classList.add('shake');
         setTimeout(() => c.classList.remove('shake'), 400);
-        const first = c.querySelector('.item-input');
-        if (first) first.focus();
+        c.querySelector('.item-input')?.focus();
         return;
     }
 
@@ -228,31 +150,18 @@ async function handlePrint() {
     printerState = 'printing';
     setFormEnabled(false);
     updateStatus('printing');
-    buildReceiptPreview(currentTicketData);
-    sounds.playPrint(2.1);
-
-    // Show paper peek inside slot while printing
     showPaperPeek();
 
-    await playPrintAnimation();
-
-    printerState = 'ready';
-    updateStatus('ready');
-    const receipt = document.getElementById('receipt-preview');
-    receipt.classList.add('tearable');
-
-    breatheTween = gsap.to(receipt, {
-        y: -4, duration: 1.3,
-        repeat: -1, yoyo: true, ease: 'sine.inOut',
-    });
+    window.thermalAPI.printStart(currentTicketData);
+    await playPrinterAnimation();
 }
 
-// ── Print Animation ──────────────────────────────────────
-function playPrintAnimation() {
+// ── Printer Body Animation ───────────────────────────────
+// Jitter, LED flash, and button press — runs while paper emerges in the paper window.
+function playPrinterAnimation() {
     return new Promise(resolve => {
-        const receipt = document.getElementById('receipt-preview');
-        const printer = document.getElementById('printer');
-        const led = document.getElementById('led');
+        const printer  = document.getElementById('printer');
+        const led      = document.getElementById('led');
         const brandLed = document.getElementById('brand-led');
         const printBtn = document.getElementById('print-btn');
 
@@ -273,159 +182,24 @@ function playPrintAnimation() {
             duration: 0.12, repeat: 17, yoyo: true, ease: 'none',
         }, 0.15);
 
-        // Paper emerges UP from the slot
-        tl.fromTo(receipt,
-            { yPercent: 100, y: 0 },
-            {
-                yPercent: 0,
-                y: 0,
-                duration: 2,
-                ease: 'steps(28)',
-            },
-            0.25,
-        );
-
         tl.to(printBtn, {
             y: 0, duration: 0.25, ease: 'power2.out',
         }, '-=0.4');
 
         tl.to([led, brandLed], {
-            backgroundColor: 'var(--led-on)',
+            backgroundColor: 'var(--led-color)',
             boxShadow: '0 0 5px var(--led-glow)',
             duration: 0.3,
         }, '-=0.3');
     });
 }
 
-// ── Tear Interaction ─────────────────────────────────────
-function setupTearInteraction() {
-    const receipt = document.getElementById('receipt-preview');
-
-    receipt.addEventListener('pointerdown', (e) => {
-        if (printerState !== 'ready') return;
-        e.preventDefault();
-
-        if (breatheTween) { breatheTween.kill(); breatheTween = null; }
-
-        const startY = e.clientY;
-        let hasTorn = false;
-
-        document.documentElement.style.cursor = 'grabbing';
-
-        const onMove = (me) => {
-            const delta = Math.max(0, startY - me.clientY);
-            const progress = Math.min(delta / 60, 1);
-            gsap.set(receipt, {
-                y: -delta * 0.85,
-                rotation: -progress * 3.5,
-            });
-            if (delta > 55 && !hasTorn) {
-                hasTorn = true;
-                cleanup();
-                completeTear();
-            }
-        };
-
-        const onUp = () => {
-            cleanup();
-            if (!hasTorn) {
-                gsap.to(receipt, {
-                    y: 0, rotation: 0, duration: 0.45,
-                    ease: 'elastic.out(1, 0.45)',
-                    onComplete: () => {
-                        breatheTween = gsap.to(receipt, {
-                            y: -4, duration: 1.3,
-                            repeat: -1, yoyo: true, ease: 'sine.inOut',
-                        });
-                    },
-                });
-            }
-        };
-
-        const cleanup = () => {
-            document.removeEventListener('pointermove', onMove);
-            document.removeEventListener('pointerup', onUp);
-            document.documentElement.style.cursor = '';
-        };
-
-        document.addEventListener('pointermove', onMove);
-        document.addEventListener('pointerup', onUp);
-    });
-}
-
-// ── Complete Tear ────────────────────────────────────────
-async function completeTear() {
-    printerState = 'tearing';
-    const receipt = document.getElementById('receipt-preview');
-
-    receipt.classList.remove('tearable');
-    sounds.playTear();
-    receipt.style.clipPath = TORN_BOTTOM;
-
-    // HIDE the paper peek when the paper is torn off
-    hidePaperPeek();
-
-    await gsap.to(receipt, {
-        y: '-=220', rotation: -4 - Math.random() * 4,
-        opacity: 0, duration: 0.55, ease: 'power3.in',
-    });
-
-    try { await window.thermalAPI.printTicket(currentTicketData); }
-    catch (err) { console.error('Failed to create ticket:', err); }
-
-    resetPrinter();
-}
-
-// ── Cancel Pending Receipt ───────────────────────────────
-function cancelPrint() {
-    if (printerState !== 'ready') return;
-
-    const receipt = document.getElementById('receipt-preview');
-    if (breatheTween) { breatheTween.kill(); breatheTween = null; }
-
-    receipt.classList.remove('tearable');
-
-    gsap.to(receipt, {
-        y: 0, rotation: 0,
-        duration: 0.5, ease: 'power2.in',
-        onComplete: () => {
-            gsap.set(receipt, {
-                yPercent: 100, y: 0, rotation: 0, opacity: 1,
-                clearProps: 'clipPath',
-            });
-            receipt.innerHTML = '';
-            hidePaperPeek();
-            setFormEnabled(true);
-            updateStatus('idle');
-            printerState = 'idle';
-            currentTicketData = null;
-        },
-    });
-}
-
-// ── Reset Printer ────────────────────────────────────────
+// ── Reset ────────────────────────────────────────────────
 function resetPrinter() {
-    const receipt = document.getElementById('receipt-preview');
-
-    gsap.killTweensOf(receipt);
-    if (breatheTween) { breatheTween.kill(); breatheTween = null; }
-
-    gsap.set(receipt, {
-        yPercent: 100,
-        y: 0,
-        rotation: 0,
-        opacity: 1,
-        clearProps: 'clipPath',
-    });
-    receipt.classList.remove('tearable');
-    receipt.innerHTML = '';
-
     hidePaperPeek();
-
     setFormEnabled(true);
     updateStatus('idle');
     resetForm();
-
     printerState = 'idle';
     currentTicketData = null;
 }
@@ -444,17 +218,6 @@ function setFormEnabled(enabled) {
     document.getElementById('print-btn').disabled = !enabled;
 }
 
-function formatTimestamp(date) {
-    const months = ['JAN','FEB','MAR','APR','MAY','JUN',
-        'JUL','AUG','SEP','OCT','NOV','DEC'];
-    const M = months[date.getMonth()];
-    const D = String(date.getDate()).padStart(2, '0');
-    const Y = date.getFullYear();
-    const h = String(date.getHours()).padStart(2, '0');
-    const m = String(date.getMinutes()).padStart(2, '0');
-    return `${M} ${D}, ${Y}  ${h}:${m}`;
-}
-
 // ── Title Bar ────────────────────────────────────────────
 function initTitleBar() {
     document.getElementById('btn-minimize').addEventListener('click',
@@ -470,8 +233,8 @@ function initKeyboard() {
             e.preventDefault();
             handlePrint();
         }
-        if (e.key === 'Escape' && printerState === 'ready') {
-            cancelPrint();
+        if (e.key === 'Escape' && printerState === 'printing') {
+            window.thermalAPI.cancelPrint();
         }
     });
 }
@@ -500,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initColorSelector();
     initKeyboard();
     initThemeToggle();
-    setupTearInteraction();
 
     const c = document.getElementById('items-container');
     c.appendChild(createItemRow());
@@ -508,9 +270,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('add-item-btn').addEventListener('click', addItemRow);
     document.getElementById('print-btn').addEventListener('click', handlePrint);
 
-    // Set the paper peek color (won't be visible until printing)
     document.getElementById('paper-peek').style.backgroundColor = selectedColor;
 
-    // Hide receipt initially (below slot)
-    gsap.set('#receipt-preview', { yPercent: 100 });
+    // Main process signals
+    window.thermalAPI.onReset(resetPrinter);
+    window.thermalAPI.onPaperReady(() => {
+        if (printerState === 'printing') updateStatus('ready');
+    });
 });

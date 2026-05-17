@@ -9,13 +9,15 @@ const store = new Store({
 });
 
 let printerWindow = null;
+let paperWindow = null;
 const ticketWindows = new Map();
 const ICON_PATH = path.join(__dirname, 'assets', 'icon.png');
 
+// ── Printer Window ───────────────────────────────────────
 function createPrinterWindow() {
     printerWindow = new BrowserWindow({
         width: 380,
-        height: 1020,           // taller window — more paper zone for long receipts
+        height: 600,
         resizable: false,
         frame: false,
         transparent: true,
@@ -41,6 +43,53 @@ function createPrinterWindow() {
     });
 }
 
+// ── Paper Window ─────────────────────────────────────────
+// Created when printing starts. Positioned above the printer slot mouth.
+// Fixed height covers the maximum possible receipt height.
+function createPaperWindow(ticketData) {
+    if (!printerWindow || printerWindow.isDestroyed()) return;
+    if (paperWindow && !paperWindow.isDestroyed()) {
+        paperWindow.close();
+    }
+
+    const PAPER_H = 520;
+    const PAPER_W = 320;
+    // Slot mouth is at y≈46 from the printer window top (slot top=24px + slot height=22px).
+    const SLOT_MOUTH_Y = 46;
+    const [px, py] = printerWindow.getPosition();
+    const paperX = px + Math.round((380 - PAPER_W) / 2);
+    const paperY = py + SLOT_MOUTH_Y - PAPER_H;
+
+    paperWindow = new BrowserWindow({
+        width: PAPER_W,
+        height: PAPER_H,
+        x: paperX,
+        y: paperY,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        hasShadow: false,
+        resizable: false,
+        icon: ICON_PATH,
+        webPreferences: {
+            preload: path.join(__dirname, 'preload-paper.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+        },
+    });
+
+    paperWindow.setIgnoreMouseEvents(true, { forward: true });
+    paperWindow.loadFile(path.join(__dirname, 'renderer', 'paper.html'));
+    paperWindow.webContents.once('did-finish-load', () => {
+        if (!paperWindow || paperWindow.isDestroyed()) return;
+        paperWindow.webContents.send('paper:data', ticketData);
+    });
+
+    paperWindow.on('closed', () => { paperWindow = null; });
+}
+
+// ── Ticket Windows ───────────────────────────────────────
 function createTicketWindow(ticketData) {
     const itemCount = ticketData.items.length;
     const hasTitle = ticketData.title && ticketData.title.trim().length > 0;
@@ -54,8 +103,12 @@ function createTicketWindow(ticketData) {
     const { width: screenW, height: screenH } = workAreaSize;
     const existingCount = ticketWindows.size;
 
-    const defaultX = Math.max(0, Math.min(420 + existingCount * 30, screenW - ticketWidth - 10));
-    const defaultY = Math.max(0, Math.min(100 + existingCount * 30, screenH - totalHeight - 10));
+    const [printerX, printerY] = printerWindow ? printerWindow.getPosition() : [0, 0];
+    const printerW = printerWindow ? printerWindow.getBounds().width : 400;
+    const spawnRight = printerX + printerW + 16 + existingCount * 24;
+    const spawnLeft  = printerX - ticketWidth - 16 + existingCount * 24;
+    const defaultX = (spawnRight + ticketWidth <= screenW) ? spawnRight : Math.max(0, spawnLeft);
+    const defaultY = Math.max(0, Math.min(printerY + existingCount * 28, screenH - totalHeight - 10));
     const x = Math.max(0, Math.min(ticketData.x ?? defaultX, screenW - ticketWidth));
     const y = Math.max(0, Math.min(ticketData.y ?? defaultY, screenH - 60));
 
@@ -94,6 +147,7 @@ function createTicketWindow(ticketData) {
     return win;
 }
 
+// ── Store Helpers ────────────────────────────────────────
 function saveTicketToStore(data) {
     const tickets = store.get('tickets');
     tickets.push(data);
@@ -114,12 +168,54 @@ function removeTicketFromStore(id) {
 }
 
 // ── IPC ──────────────────────────────────────────────────
-ipcMain.handle('printer:print-ticket', async (_event, ticketData) => {
+
+// Printer window requests to start a print job → open paper window
+ipcMain.on('printer:print-start', (_event, ticketData) => {
+    createPaperWindow(ticketData);
+});
+
+// Printer window cancels (ESC) → close paper window, reset printer
+ipcMain.on('printer:cancel', () => {
+    if (paperWindow && !paperWindow.isDestroyed()) {
+        paperWindow.close();
+        paperWindow = null;
+    }
+    if (printerWindow && !printerWindow.isDestroyed()) {
+        printerWindow.webContents.send('printer:reset');
+    }
+});
+
+// Paper window: receipt emerge animation complete → notify printer to show TEAR status
+ipcMain.on('paper:ready', () => {
+    if (printerWindow && !printerWindow.isDestroyed()) {
+        printerWindow.webContents.send('printer:paper-ready');
+    }
+});
+
+// Paper window: receipt torn → save ticket, spawn ticket window, reset printer
+ipcMain.on('paper:torn', (_event, ticketData) => {
     ticketData.id = `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     ticketData.createdAt = new Date().toISOString();
     saveTicketToStore(ticketData);
     createTicketWindow(ticketData);
-    return ticketData.id;
+
+    if (paperWindow && !paperWindow.isDestroyed()) {
+        paperWindow.close();
+        paperWindow = null;
+    }
+    if (printerWindow && !printerWindow.isDestroyed()) {
+        printerWindow.webContents.send('printer:reset');
+    }
+});
+
+// Paper window mouse click-through toggle
+ipcMain.on('paper:set-ignore-mouse', (_event, { ignore }) => {
+    if (!paperWindow || paperWindow.isDestroyed()) return;
+    if (ignore) {
+        paperWindow.setIgnoreMouseEvents(true, { forward: true });
+    } else {
+        paperWindow.setIgnoreMouseEvents(false);
+    }
 });
 
 ipcMain.on('ticket:update-items', (_event, { id, items }) => updateTicketInStore(id, { items }));
@@ -143,19 +239,6 @@ ipcMain.on('window:minimize', (event) => {
 
 ipcMain.on('window:close', (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close();
-});
-
-// ── Click-through fix ────────────────────────────────────
-// When the mouse is over a transparent part of the window,
-// forward mouse events to whatever is below (desktop, other apps).
-// When over the printer body or paper, capture events normally.
-ipcMain.on('set-ignore-mouse-events', (event, ignore) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) {
-        // forward:true means mousemove still reaches us even when ignored
-        // so we can keep tracking position to toggle back when needed
-        win.setIgnoreMouseEvents(ignore, { forward: true });
-    }
 });
 
 // ── App Lifecycle ────────────────────────────────────────
