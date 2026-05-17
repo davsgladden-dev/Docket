@@ -1,0 +1,49 @@
+{
+  "name": "docket",
+  "version": "1.0.0",
+  "description": "A receipt-printer to-do list for your desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.docket.app",
+    "productName": "Docket",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload-*.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.png",
+      "target": ["dmg"]
+    },
+    "win": {
+      "icon": "assets/icon.png",
+      "target": ["nsis"]
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "target": ["AppImage"]
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.3",
+    "electron-store": "^8.2.0",
+    "gsap": "^3.12.7"
+  }
+}

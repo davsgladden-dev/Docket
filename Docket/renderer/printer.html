@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="retro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';">
+    <title>Docket</title>
+    <link rel="stylesheet" href="printer.css">
+</head>
+<body>
+
+<!-- The body is transparent. The printer is a freestanding
+     object floating on the desktop. Paper emerges UPWARD
+     from the slot into the transparent space above. -->
+
+<div class="stage">
+
+    <!-- ── PRINTER BODY ─────────────────────────────────── -->
+    <div class="printer" id="printer">
+
+        <!-- Top face (chamfered, where the slot lives) -->
+        <div class="printer-top">
+            <div class="paper-slot">
+                <div class="slot-shadow"></div>
+                <div class="paper-peek" id="paper-peek"></div>
+                <div class="slot-teeth"></div>
+            </div>
+            <div class="top-bevel"></div>
+        </div>
+
+        <!-- Front face — angled forward slightly via box-shadow -->
+        <div class="printer-front">
+
+            <div class="drag-region"></div>
+
+            <div class="window-controls">
+                <button id="btn-minimize" class="win-btn" aria-label="Minimize">
+                    <span class="win-icon">─</span>
+                </button>
+                <button id="btn-close" class="win-btn win-close" aria-label="Close">
+                    <span class="win-icon">✕</span>
+                </button>
+            </div>
+
+            <!-- Brand label + status -->
+            <div class="brand-row">
+                <div class="brand-pill">
+                    <div class="brand-led" id="brand-led"></div>
+                    <span class="brand-text">DOCKET</span>
+                </div>
+                <div class="status-display" id="status-display">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span class="status-text" id="status-text">READY</span>
+                </div>
+            </div>
+
+            <!-- Inset control panel -->
+            <div class="control-panel" id="control-panel">
+
+                <div class="section">
+                    <label class="section-label">PAPER ROLL</label>
+                    <div class="color-selector" id="color-selector"></div>
+                </div>
+
+                <div class="section">
+                    <label class="section-label">
+                        TITLE <span class="optional">(optional)</span>
+                    </label>
+                    <input type="text" id="ticket-title" class="docket-input"
+                           placeholder="Shopping list..." maxlength="40">
+                </div>
+
+                <div class="section">
+                    <label class="section-label">ITEMS</label>
+                    <div id="items-container" class="items-container"></div>
+                    <button id="add-item-btn" class="add-item-btn">+ Add Item</button>
+                </div>
+
+                <button id="print-btn" class="print-btn">
+                    <span class="print-label">PRINT</span>
+                </button>
+                <div class="shortcut-hint">Ctrl+Enter</div>
+            </div>
+
+            <!-- Footer -->
+            <div class="printer-footer">
+                <div class="led-group">
+                    <div class="led" id="led"></div>
+                    <span class="led-label">PWR</span>
+                </div>
+
+                <div class="theme-toggle-wrap">
+                    <span class="toggle-label">PIXEL</span>
+                    <label class="theme-toggle" aria-label="Toggle pixel mode">
+                        <input type="checkbox" id="theme-toggle-input">
+                        <div class="toggle-track"></div>
+                        <div class="toggle-knob"></div>
+                    </label>
+                </div>
+
+                <span class="brand-stamp">DOCKET™</span>
+            </div>
+
+        </div>
+
+        <!-- Base shadow at the bottom -->
+        <div class="printer-base"></div>
+
+    </div>
+
+    <!-- Floor shadow under the whole printer -->
+    <div class="ground-shadow"></div>
+
+</div>
+
+<script src="gsap.min.js"></script>
+<script src="../assets/sounds/sounds.js"></script>
+<script src="printer.js"></script>
+</body>
+</html>
