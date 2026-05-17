@@ -99,9 +99,9 @@ function formatTimestamp(date) {
 async function emerge() {
     const receipt = document.getElementById('receipt-preview');
 
-    // Start hidden below the window bottom (inside the printer slot visually).
-    // The OS clips content below window bounds, so this is invisible until it rises.
-    gsap.set(receipt, { yPercent: 100, y: 0 });
+    // Position below the window bottom and restore opacity (CSS starts at 0 to prevent
+    // any flash before this runs). Content below window bounds is OS-clipped = invisible.
+    gsap.set(receipt, { yPercent: 100, y: 0, opacity: 1 });
 
     sounds.playPrint(2.1);
 

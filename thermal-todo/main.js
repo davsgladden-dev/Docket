@@ -67,10 +67,12 @@ function createPaperWindow(ticketData) {
         y: paperY,
         frame: false,
         transparent: true,
+        backgroundColor: '#00000000',
         alwaysOnTop: true,
         skipTaskbar: true,
         hasShadow: false,
         resizable: false,
+        show: false,
         icon: ICON_PATH,
         webPreferences: {
             preload: path.join(__dirname, 'preload-paper.js'),
@@ -80,6 +82,10 @@ function createPaperWindow(ticketData) {
     });
 
     paperWindow.setIgnoreMouseEvents(true, { forward: true });
+    paperWindow.once('ready-to-show', () => {
+        if (!paperWindow || paperWindow.isDestroyed()) return;
+        paperWindow.show();
+    });
     paperWindow.loadFile(path.join(__dirname, 'renderer', 'paper.html'));
     paperWindow.webContents.once('did-finish-load', () => {
         if (!paperWindow || paperWindow.isDestroyed()) return;

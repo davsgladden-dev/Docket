@@ -14,7 +14,8 @@ html, body {
     position: absolute;
     bottom: 0;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) translateY(100%);
+    opacity: 0;
     width: 280px;
     background-color: #F5F2EE;
     padding: 16px 18px 14px;
