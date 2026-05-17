@@ -35,7 +35,7 @@ html:not([data-theme="pixel"]) {
     --side-lo:            rgba(0,0,0,0.14);
 
     --slot-bg:            #0C0906;
-    --slot-teeth:         #2A2015;
+    --slot-teeth:         #6A4E30;
 
     --panel-hi:           #3A4540;
     --panel-lo:           #283028;
@@ -47,7 +47,7 @@ html:not([data-theme="pixel"]) {
     --input-ph:           #708878;
 
     --label-color:        #92A095;
-    --muted-light:        #A89878;
+    --muted-light:        #6A5540;
 
     --status-bg:          #0A0E0A;
     --status-green:       #5DE89A;
@@ -216,7 +216,7 @@ html, body {
     top: 24px;
     left: 50%;
     transform: translateX(-50%);
-    width: 244px;
+    width: 278px;
     height: 22px;
     background: var(--slot-bg);
     border-radius: 3px;
@@ -231,7 +231,7 @@ html, body {
 
 [data-theme="pixel"] .paper-slot {
     border-radius: 0;
-    width: 244px;
+    width: 278px;
     height: 24px;
     border: 3px solid #000;
     box-shadow:
@@ -294,7 +294,7 @@ html, body {
         /* outer black border — sides only, top handled by printer-top */
         3px 0 0 #000,
         -3px 0 0 #000;
-    padding: 12px 14px 10px;
+    padding: 16px 16px 14px;
 }
 
 .drag-region {
@@ -328,11 +328,12 @@ html, body {
 [data-theme="pixel"] .win-btn {
     border-radius: 0;
     background: rgba(0,0,0,0.35);
+    color: var(--input-text);
     box-shadow:
         inset 1px 1px 0 rgba(255,255,255,0.15),
         inset -1px -1px 0 rgba(0,0,0,0.5),
         1px 1px 0 #000;
-    width: 22px; height: 22px;
+    width: 24px; height: 24px;
 }
 
 /* ── BRAND ROW ──────────────────────────────────────────── */
@@ -381,7 +382,7 @@ html, body {
     text-transform: uppercase;
 }
 [data-theme="pixel"] .brand-text {
-    font-size: 7px; letter-spacing: 1px;
+    font-size: 8px; letter-spacing: 1px;
 }
 
 /* Status */
@@ -419,7 +420,7 @@ html, body {
     transition: color 0.2s;
 }
 [data-theme="pixel"] .status-text {
-    font-size: 7px; letter-spacing: 1px;
+    font-size: 8px; letter-spacing: 1px;
     text-shadow: 0 0 4px var(--status-glow);
 }
 
@@ -451,6 +452,8 @@ html, body {
         inset 2px 2px 0 rgba(255,255,255,0.05),
         inset -2px -2px 0 rgba(0,0,0,0.6),
         3px 0 0 #000, -3px 0 0 #000;
+    padding: 15px;
+    gap: 14px;
 }
 
 /* ── Section Labels ─────────────────────────────────────── */
@@ -462,7 +465,7 @@ html, body {
     letter-spacing: 2px; color: var(--label-color); font-weight: bold;
 }
 [data-theme="pixel"] .section-label {
-    font-size: 7px; letter-spacing: 1px;
+    font-size: 8px; letter-spacing: 1px;
 }
 
 .optional { color: var(--label-color); font-weight: normal; opacity: 0.6; }
@@ -521,7 +524,7 @@ html, body {
 [data-theme="pixel"] .docket-input {
     border: 2px solid var(--input-border);
     box-shadow: inset 2px 2px 0 rgba(0,0,0,0.7);
-    font-size: 11px; padding: 9px 10px;
+    font-size: 12px; padding: 10px 12px;
 }
 [data-theme="pixel"] .docket-input:focus {
     border-color: var(--status-green);
@@ -561,7 +564,7 @@ html, body {
 .add-item-btn.hidden { display: none; }
 
 [data-theme="pixel"] .add-item-btn {
-    font-size: 7px; letter-spacing: 0.5px;
+    font-size: 8px; letter-spacing: 0.5px;
     border: 2px dashed var(--input-border); padding: 10px 8px;
 }
 
@@ -591,7 +594,7 @@ html, body {
 
 [data-theme="pixel"] .print-btn {
     background: var(--btn-mid);
-    font-size: 10px; letter-spacing: 2px; padding: 14px;
+    font-size: 11px; letter-spacing: 3px; padding: 14px;
     box-shadow:
         0 4px 0 var(--btn-lo),
         4px 4px 0 rgba(0,0,0,0.6),
@@ -608,7 +611,7 @@ html, body {
     color: var(--label-color); text-align: center;
     font-family: var(--font-ui);
 }
-[data-theme="pixel"] .shortcut-hint { font-size: 6px; letter-spacing: 0.5px; }
+[data-theme="pixel"] .shortcut-hint { font-size: 7px; letter-spacing: 1px; }
 
 /* ── Footer ─────────────────────────────────────────────── */
 .printer-footer {
@@ -629,13 +632,13 @@ html, body {
     font-family: var(--font-ui); font-size: 9px;
     letter-spacing: 1.5px; color: var(--muted-light); font-weight: bold;
 }
-[data-theme="pixel"] .led-label { font-size: 6px; letter-spacing: 0.5px; }
+[data-theme="pixel"] .led-label { font-size: 7px; letter-spacing: 1px; }
 
 .brand-stamp {
     font-family: var(--font-ui); font-size: 9px;
     letter-spacing: 2px; color: var(--muted-light); font-weight: bold;
 }
-[data-theme="pixel"] .brand-stamp { font-size: 6px; letter-spacing: 0.5px; }
+[data-theme="pixel"] .brand-stamp { font-size: 7px; letter-spacing: 1px; }
 
 /* ── Theme Toggle ───────────────────────────────────────── */
 .theme-toggle-wrap {
@@ -649,7 +652,7 @@ html, body {
     text-transform: uppercase; user-select: none;
 }
 [data-theme="pixel"] .toggle-label {
-    font-size: 6px; letter-spacing: 0.5px; color: var(--status-green);
+    font-size: 7px; letter-spacing: 1px; color: var(--status-green);
 }
 
 .theme-toggle { position: relative; width: 34px; height: 18px; cursor: pointer; flex-shrink: 0; }
