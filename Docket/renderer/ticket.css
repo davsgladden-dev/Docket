@@ -96,7 +96,7 @@ body {
     top: 3px; right: 4px;
     width: 22px; height: 22px;
     border: none; background: transparent;
-    color: rgba(0,0,0,0.15); font-size: 12px;
+    color: rgba(0,0,0,0.35); font-size: 12px;
     cursor: pointer; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.2s; z-index: 10;
@@ -121,8 +121,10 @@ body {
 .ticket-title:empty { display: none; }
 
 .ticket-separator {
-    border-top: 1px dashed rgba(0,0,0,0.15);
-    margin: 2px 0;
+    height: 1px; margin: 4px 0;
+    background: repeating-linear-gradient(90deg,
+        rgba(0,0,0,0.25) 0, rgba(0,0,0,0.25) 4px,
+        transparent 4px, transparent 8px);
 }
 
 /* ── Items ────────────────────────────────────────────── */
@@ -166,7 +168,7 @@ body {
 
 /* ── Timestamp ────────────────────────────────────────── */
 .ticket-timestamp {
-    font-size: 10px; color: rgba(0,0,0,0.2);
+    font-size: 10px; color: rgba(0,0,0,0.45);
     text-align: center; letter-spacing: 0.5px;
     padding-top: 2px;
 }
